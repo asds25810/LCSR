@@ -20,7 +20,7 @@ def send2sendrecv(send):
     return sendrecv
 
 n_events = 0
-with open("./trace_data/combine.csv") as file:
+with open("./trace_data/lu.D.8/combine.csv") as file:
     line = file.readline().rstrip('\n')
     while line:
         n_events += 1
@@ -66,7 +66,7 @@ with open("./trace_data/combine.csv") as file:
         line = file.readline().rstrip('\n')
 
 n_events = 0
-with open("./trace_data/match.csv", 'w') as file:
+with open("./trace_data/lu.D.8/match.csv", 'w') as file:
     for event in event_list:
         n_events += 1
         if n_events % 1000 == 0:

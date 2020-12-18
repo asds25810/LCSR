@@ -24,8 +24,8 @@ para_dict = {'function': 0,
              'D': 20,
              'Blank': 21}
 
-f_in = open("./trace_data/0.combine", 'r')
-f_out = open("./trace_data/combine.csv", 'w', encoding='utf8', newline='')
+f_in = open("./trace_data/lu.D.8/0.combine", 'r')
+f_out = open("./trace_data/lu.D.8/combine.csv", 'w', encoding='utf8', newline='')
 
 writer = csv.writer(f_out)
 for line in f_in:

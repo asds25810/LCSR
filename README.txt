@@ -10,7 +10,6 @@ dwarfcode 用于进程间合并
     trace2symbol 去掉一些多余信息
     order 将事件重新排序
     combine 进程间trace合并
-    combine.sh 调用dwarfcode生成.combine文件
 Train.py 数据预处理（删除无用列，将每个feature field处理为global index for embedding table和one-hot两种形式）、训练和测试
 Replay.py 回放trace
 preprocess_combine.py 群集通信只保留一行，p2p通信将Send转换为Sendrecv，删除Recv/Irecv
