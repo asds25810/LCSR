@@ -12,7 +12,7 @@ import scipy.special
 from time import perf_counter
 from torch.multiprocessing import Pool, Process, set_start_method
 
-device = torch.device('cuda:6' if torch.cuda.is_available() else 'cpu')
+device = torch.device('cuda:5' if torch.cuda.is_available() else 'cpu')
 torch.cuda.set_device(device)
 
 
@@ -36,7 +36,7 @@ class Dataset(torch.utils.data.Dataset):
 
     def load_events(self):
         print('loading data......', end='')
-        train_df = pd.read_csv('./trace_data/lu.S.8/match.csv')
+        train_df = pd.read_csv('./trace_data/lu.D.8/match.csv')
         train_df.columns = event_para_dict.keys()
         train_df.drop(['request', 'S', 'E', 'D'], axis=1, inplace=True)
         train_df.dropna(axis=1, inplace=True, how='all')
@@ -45,9 +45,9 @@ class Dataset(torch.utils.data.Dataset):
         # the last column 'Blank' is a numeric feature
         self.categorical_feature_fields = self.col_names.copy().drop('Blank')
         train_df['Blank'] =  self.min_max.fit_transform(np.log(train_df['Blank'].to_numpy().reshape(-1, 1)+1))
-        fig, ax = plt.subplots(1, 1)
-        ax.hist(train_df['Blank'].to_numpy(), bins=100)
-        plt.show()
+        # fig, ax = plt.subplots(1, 1)
+        # ax.hist(train_df['Blank'].to_numpy(), bins=100)
+        # plt.show()
 
         # preprocess for embeddings of multiple categorical features, convert input data to global index format
         self.n_categorical_features = 0
@@ -158,6 +158,7 @@ class Model(nn.Module):
             input_size=(dataset.n_feature_fields - 1) * self.embedding_dim + 1,
             hidden_size=self.lstm_size,
             num_layers=self.num_layers,
+            batch_first=True,
             # dropout=0.2
         )
         for param in self.lstm.parameters():
@@ -180,9 +181,9 @@ class Model(nn.Module):
 
         return logits, state
 
-    def init_state(self, sequence_length):
-        return (torch.zeros(self.num_layers, sequence_length, self.lstm_size).to(device),
-                torch.zeros(self.num_layers, sequence_length, self.lstm_size).to(device))
+    def init_state(self, batch_size):
+        return (torch.zeros(self.num_layers, batch_size, self.lstm_size).to(device),
+                torch.zeros(self.num_layers, batch_size, self.lstm_size).to(device))
 
 
 def train(dataset, model, args):
@@ -193,6 +194,7 @@ def train(dataset, model, args):
         batch_size=args.batch_size,
         num_workers=8,
         pin_memory=True,
+        drop_last=True,
         shuffle=True
     )
 
@@ -208,14 +210,14 @@ def train(dataset, model, args):
     for epoch in range(args.max_epochs):
         # state_h, state_c = model.init_state(args.sequence_length)
         for batch, (x, y) in enumerate(dataloader):
-            state_h, state_c = model.init_state(args.sequence_length)
+            state_h, state_c = model.init_state(args.batch_size)
             optimizer.zero_grad()
             x = x.to(device)
             y = y.to(device)
             y_pred, (state_h, state_c) = model(x, (state_h, state_c))
 
             # loss for numerical feature field
-            loss_num = criterion_num(y_pred[:, :, -1:], y[:, :, -1:]) * 5
+            loss_num = criterion_num(y_pred[:, :, -1:], y[:, :, -1:])
             # loss for categorical feature field
             loss_cat = 0
             for i, feature_field in enumerate(dataset.categorical_feature_fields):
@@ -231,7 +233,7 @@ def train(dataset, model, args):
             loss.backward()
             optimizer.step()
 
-            if batch % 10 == 0:
+            if batch % 20 == 0:
                 print({'epoch': epoch, 'batch': batch, 'lr': scheduler.get_last_lr(), 'loss_cat': loss_cat.item(),
                    'loss_num': loss_num.item()})
 
@@ -252,21 +254,21 @@ def validate(dataset, model):
         dataloader = DataLoader(
             dataset,
             batch_size=args.batch_size,
-            num_workers=4,
+            num_workers=8,
             pin_memory=True,
-            # shuffle=True
+            drop_last=True,
         )
         criterion_num = nn.MSELoss()
         criterion_cat = nn.CrossEntropyLoss()
 
-        state_h, state_c = model.init_state(args.sequence_length)
+        state_h, state_c = model.init_state(args.batch_size)
         for batch, (x, y) in enumerate(dataloader):
             x = x.to(device)
             y = y.to(device)
             y_pred, (state_h, state_c) = model(x, (state_h, state_c))
 
             # loss for numerical feature field
-            loss_num = criterion_num(y_pred[:, :, -1:], y[:, :, -1:]) * 5
+            loss_num = criterion_num(y_pred[:, :, -1:], y[:, :, -1:])
             # loss for categorical feature field
             loss_cat = 0
             for i, feature_field in enumerate(dataset.categorical_feature_fields):
@@ -281,16 +283,18 @@ def validate(dataset, model):
 
             if (batch+1) * args.batch_size >= len(dataset):
                 break
+            y=y.detach().to('cpu').numpy()
+            y_pred = y_pred.detach().to('cpu').numpy()
             for index in range(args.batch_size):
                 last_event_logits = y_pred[index][-1]
-                _, event_raw = dataset.decode_onehot(last_event_logits.detach().to('cpu').numpy(), softmax=False,
+                _, event_raw = dataset.decode_onehot(last_event_logits, softmax=False,
                                                                shield=True)
                 event_pred = dataset.get_event_str(event_raw)
 
                 event = []
                 for i, feature_field in enumerate(dataset.categorical_feature_fields):
-                   event.append(dataset.values_dict[feature_field][y[index,-1,i].detach().to('cpu').numpy().astype(int)])
-                Blank = y[index, -1, -1].detach().to('cpu').numpy()
+                   event.append(dataset.values_dict[feature_field][y[index,-1,i].astype(int)])
+                Blank = y[index, -1, -1]
                 Blank = dataset.min_max.inverse_transform(Blank.reshape(1, -1))[0][0]
                 Blank = np.exp(Blank)-1
                 event.append(Blank)
@@ -305,7 +309,7 @@ def validate(dataset, model):
 def predict(dataset, model, events, next_events=1000):
     model.eval()
 
-    state_h, state_c = model.init_state(events.shape[0])
+    state_h, state_c = model.init_state(1)
 
     for i in range(0, next_events):
         x = torch.tensor([events[i:].to_numpy()], dtype=torch.float).to(device)
@@ -325,7 +329,7 @@ if __name__ == '__main__':
     # set_start_method('spawn')
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('--max-epochs', type=int, default=10)
+    parser.add_argument('--max-epochs', type=int, default=1)
     parser.add_argument('--batch-size', type=int, default=128)
     parser.add_argument('--sequence-length', type=int, default=128)
     args = parser.parse_args()
