@@ -15,6 +15,8 @@ Replay.py 回放trace
 preprocess_combine.py 群集通信只保留一行，p2p通信将Send转换为Sendrecv，删除Recv/Irecv
 Transform.py 将多个MPI函数数据格式合并
 MPI_define.py 定义MPI相关的信息
+Model_LSTM.py LSTM model 
+Trace_Dataset.py Dataset class for processing trace data
 
 
 简明步骤
@@ -28,3 +30,4 @@ MPI_define.py 定义MPI相关的信息
 8. 运行Transform.py，生成combine.csv
 9. 运行preprocess_combine.py，生成match.csv
 10. 运行Train.py
+11. 运行mpirun -np np python Replay.py

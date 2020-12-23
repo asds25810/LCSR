@@ -76,7 +76,7 @@ sendrecv_para_list = [
 ]
 
 function_para_dict = {
-    'MPI_Allreduce' : ['file', 'function', 'count', 'datatype', 'Op', 'root', 'Blank'],
+    'MPI_Allreduce' : ['file', 'function', 'count', 'datatype', 'Op', 'Blank'],
     'MPI_Sendrecv': ['file', 'function', 'source', 'dest', 'sendcount', 'sendtype', 'recvcount', 'recvtype', 'Blank'],
     'MPI_Barrier' : ['file', 'function', 'Blank'],
     'MPI_Bcast' : ['file', 'function','count','datatype','root', 'Blank'],
