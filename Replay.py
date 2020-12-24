@@ -27,14 +27,14 @@ def predict(events, model, state_h, state_c):
     return events, state_h, state_c
 
 def replay(event):
-    mpi_func = event[1]
-    send_buf = None
-    recv_buf = None
+    mpi_func = event['function']
+    # send_buf = None
+    # recv_buf = None
     if mpi_func == 'MPI_Sendrecv':
         if rank == int(event['source']) or rank == int(event['dest']):
             send_buf = np.zeros(int(event['sendcount']*event['sendtype']), dtype=np.byte)
             recv_buf = np.zeros(int(event['recvcount']*event['recvtype']), dtype=np.byte)
-            comm.Sendrecv(send_buf=send_buf, int_source=int(event['source']), recvbuf=recv_buf, int_dest=int(event['dest']))
+            comm.Sendrecv(send_buf=send_buf, dest=int(event['dest']), recvbuf=recv_buf, source=int(event['source']))
             time.sleep(event['Blank']/1000.0)
     elif mpi_func == 'MPI_Allreduce':
         send_buf = np.zeros(int(event['count'] * event['datatype']), dtype=np.byte)
@@ -42,8 +42,8 @@ def replay(event):
         comm.Allreduce(send_buf=send_buf, recv_buf=recv_buf, Op_op=MPI.MAX) # Op doesn't matter so much
         time.sleep(event['Blank']/1000.0)
     elif mpi_func == 'MPI_Bcast':
-        send_buf = np.zeros(event['count'] * event['datatype'], dtype=np.byte)
-        comm.Bcast(buf=send_buf, int_root=int(event['root']))
+        send_buf = np.zeros(int(event['count'] * event['datatype']), dtype=np.byte)
+        comm.Bcast(buf=send_buf, root=int(event['root']))
         time.sleep(event['Blank']/1000.0)
     elif mpi_func == 'MPI_Barrier':
         comm.Barrier()
@@ -51,11 +51,6 @@ def replay(event):
     else:
         print('error! unexpected MPI function %s' % mpi_func)
 
-
-
-
-# n_feature_fields = 13
-# n_features = 74
 
 dataset = Dataset()
 dataset.load_events_eval('dataset.csv', 'dataset.info')
@@ -71,17 +66,23 @@ rank = comm.Get_rank()
 
 MAX_STEPS = dataset.n_events - dataset.sq_length
 
+if rank == 0:
+    print('replay starts')
+
 t_begin = MPI.Wtime()
 comm.Barrier()
 # events of number sq_length are given
 for i in range(dataset.sq_length):
-    event_raw = dataset.global2raw(dataset.events[i])
-    replay(event_raw)
+    event_raw = dataset.global2raw(dataset.events.loc[i])
+    replay(dict(zip(dataset.col_names, event_raw)))
 # generate remainder events
 for i in range(0, MAX_STEPS):
     predict(dataset.events, model, state_h, state_c)
-    _, event_raw = dataset.onehot2global(dataset.events[-1], softmax=False, shield=True)
-    replay(event_raw)
+    _, event_raw = dataset.onehot2global(dataset.events.loc[-1], softmax=False, shield=True)
+    replay(dict(zip(dataset.col_names, event_raw)))
+    if rank == 0:
+        if i % 1000 == 0:
+            print('replayed %d events' % i)
 comm.Barrier()
 
 t_end = MPI.Wtime()

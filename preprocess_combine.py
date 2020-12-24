@@ -24,7 +24,7 @@ with open("./trace_data/lu.D.8/combine.csv") as file:
     line = file.readline().rstrip('\n')
     while line:
         n_events += 1
-        if n_events % 1000 == 0:
+        if n_events % 10000 == 0:
             print('%d combined events, %s'% (n_events, line))
 
         data = line.split(',')
@@ -44,7 +44,7 @@ with open("./trace_data/lu.D.8/combine.csv") as file:
                 if blank>reserve_blank:
                     reserve_blank=blank
             same_list[0][event_para_dict['Blank']] =  str(reserve_blank)
-            same_list[0][event_para_dict['file']] = '-1' # 群集通信的进程号设定为-1
+            same_list[0][event_para_dict['file']] = '0' # 群集通信的进程号设定为0
             # 群集通信每个进程上都一样，只需保留一个，加入event_list
             event_list.append(same_list[0])
 
@@ -69,7 +69,7 @@ n_events = 0
 with open("./trace_data/lu.D.8/match.csv", 'w') as file:
     for event in event_list:
         n_events += 1
-        if n_events % 1000 == 0:
+        if n_events % 10000 == 0:
             print('writing %d/%d event'% (n_events, len(event_list)))
 
         line = ''

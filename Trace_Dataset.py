@@ -28,10 +28,12 @@ class Dataset(torch.utils.data.Dataset):
         self.sq_length = sq_length
 
         print('loading data......', end='')
-        train_df = pd.read_csv(dataset_train_path)
+        train_df = pd.read_csv(dataset_train_path, header=None)
         train_df.columns = event_para_dict.keys()
-        train_df.drop(['request', 'S', 'E', 'D'], axis=1, inplace=True)
+        # train_df.sort_values(by='S', inplace=True) # it significantly increases loss
+        train_df.drop(['request', 'op', 'S', 'E', 'D'], axis=1, inplace=True)
         train_df.dropna(axis=1, inplace=True, how='all')
+        train_df.fillna(-1, inplace=True)
         self.col_names = train_df.columns
 
         train_df[0:sq_length].to_csv(dataset_eval_path, index=False, header=False)
@@ -72,20 +74,22 @@ class Dataset(torch.utils.data.Dataset):
 
     def load_events_eval(self, dataset_path, dataset_info_path):
         self.deserialize(dataset_info_path)
-        eval_df = pd.read_csv(dataset_path)
+        eval_df = pd.read_csv(dataset_path, header=None)
         eval_df.columns = self.col_names
+        eval_df.fillna(-1, inplace=True)
 
-        eval_df['Blank'] = self.min_max.transform(np.log(eval_df['Blank']+1))
+        eval_df['Blank'] = self.min_max.transform(np.log(eval_df['Blank'].to_numpy().reshape(-1, 1)+1))
 
         # convert raw format to global index format
         for column in self.categorical_feature_fields:
-            eval_df[column] = self.value2index[eval_df[column]] + self.index_offset[column]
+            for row in range(len(eval_df[column])):
+                eval_df.at[row, column] = self.value2index[column][eval_df.at[row, column]] + self.index_offset[column]
         self.events = eval_df
 
     def global2raw(self, event_global):
         event_raw = []
         for column in self.categorical_feature_fields:
-            event_raw.append(self.index2value[column][event_global[column] - self.index_offset[column]])
+            event_raw.append(self.index2value[column][int(event_global[column] - self.index_offset[column])])
         Blank = event_global[-1]
         Blank = np.exp(self.min_max.inverse_transform([[Blank]])[0][0])-1
         event_raw.append(Blank)
@@ -142,8 +146,11 @@ class Dataset(torch.utils.data.Dataset):
     def get_event_str(self, event_raw):
         line = ''
         for feature in event_raw:
-            if str(feature) == 'nan':
-                line += ','
+            if str(feature).isnumeric():
+                if feature<0.0:
+                    line += ','
+                else:
+                    line+=str(int(feature)) + ','
             else:
                 line += str(feature) + ','
         line = str.rstrip(line, ',')
