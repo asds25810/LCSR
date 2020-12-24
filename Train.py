@@ -42,6 +42,8 @@ def train(dataset, model, args):
         # state_h, state_c = model.init_state(args.sequence_length)
         for batch, (x, y) in enumerate(dataloader):
             state_h, state_c = model.init_state(args.batch_size)
+            state_h = state_h.to(device)
+            state_c = state_c.to(device)
             optimizer.zero_grad()
             x = x.to(device)
             y = y.to(device)
@@ -55,7 +57,7 @@ def train(dataset, model, args):
                 begin = dataset.index_offset[feature_field]
                 end = dataset.index_offset[feature_field] + dataset.feature_field_size[feature_field]
                 loss_cat = loss_cat + criterion_cat(y_pred[:, :, begin:end].transpose(1, 2), y[:, :, i].long())
-            loss_cat = loss_cat/len(dataset.categorical_feature_fields)
+            loss_cat = loss_cat / len(dataset.categorical_feature_fields)
             loss = loss_cat + loss_num
 
             state_h = state_h.detach()
@@ -66,7 +68,7 @@ def train(dataset, model, args):
 
             if batch % 20 == 0:
                 print({'epoch': epoch, 'batch': batch, 'lr': scheduler.get_last_lr(), 'loss_cat': loss_cat.item(),
-                   'loss_num': loss_num.item()})
+                       'loss_num': loss_num.item()})
 
                 # for debug
                 # y_pred_plt = y_pred.detach().to('cpu').numpy()[0][-1]
@@ -78,6 +80,7 @@ def train(dataset, model, args):
                 # print('')
 
         scheduler.step()
+
 
 def validate(dataset, model):
     with open('validate.txt', 'w') as file:
@@ -93,6 +96,8 @@ def validate(dataset, model):
         criterion_cat = nn.CrossEntropyLoss()
 
         state_h, state_c = model.init_state(args.batch_size)
+        state_h = state_h.to(device)
+        state_c = state_c.to(device)
         for batch, (x, y) in enumerate(dataloader):
             x = x.to(device)
             y = y.to(device)
@@ -112,9 +117,9 @@ def validate(dataset, model):
             state_h = state_h.detach()
             state_c = state_c.detach()
 
-            if (batch+1) * args.batch_size >= len(dataset):
+            if (batch + 1) * args.batch_size >= len(dataset):
                 break
-            y=y.detach().to('cpu').numpy()
+            y = y.detach().to('cpu').numpy()
             y_pred = y_pred.detach().to('cpu').numpy()
             for index in range(args.batch_size):
                 last_event_logits = y_pred[index][-1]
@@ -124,65 +129,67 @@ def validate(dataset, model):
 
                 event = []
                 for i, feature_field in enumerate(dataset.categorical_feature_fields):
-                   event.append(dataset.value2index[feature_field][y[index, -1, i].astype(int)])
+                    event.append(dataset.value2index[feature_field][y[index, -1, i].astype(int)])
                 Blank = y[index, -1, -1]
                 Blank = dataset.min_max.inverse_transform(Blank.reshape(1, -1))[0][0]
-                Blank = np.exp(Blank)-1
+                Blank = np.exp(Blank) - 1
                 event.append(Blank)
                 event = dataset.get_event_str(event)
-                file.write('%f %f\n'%(loss_cat, loss_num))
-                file.write(event+'\n')
-                file.write(event_pred+'\n')
+                file.write('%f %f\n' % (loss_cat, loss_num))
+                file.write(event + '\n')
+                file.write(event_pred + '\n')
             print(batch)
 
 
-
 def predict(dataset, model, events, next_events=1000):
+    model.to('cpu')
     model.eval()
 
     state_h, state_c = model.init_state(1)
 
     for i in range(0, next_events):
-        x = torch.tensor([events[i:].to_numpy()], dtype=torch.float).to(device)
+        x = torch.tensor([events[i:].to_numpy()], dtype=torch.float)
         y_pred, (state_h, state_c) = model(x, (state_h, state_c))
 
         last_event_logits = y_pred[0][-1]
-        event_input, event_raw = dataset.onehot2global(last_event_logits.detach().to('cpu').numpy(), softmax=True,
+        event_input, event_raw = dataset.onehot2global(last_event_logits.detach().numpy(), softmax=False,
                                                        shield=True)
         events.loc[len(events.index)] = event_input
 
         # output predicted events
-        # print(dataset.get_event_str(event_raw))
+        print(dataset.get_event_str(event_raw))
     return events
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--max-epochs', type=int, default=1)
-    parser.add_argument('--batch-size', type=int, default=256)
-    parser.add_argument('--sequence-length', type=int, default=256)
+    parser.add_argument('--batch-size', type=int, default=128)
+    parser.add_argument('--sequence-length', type=int, default=128)
     parser.add_argument('--data-dir', type=str, default='')
     args = parser.parse_args()
 
     dataset = Dataset()
-    dataset.load_events_train('./trace_data/lu.D.8/match.csv', args.sequence_length, 'dataset.csv')
+    dataset.load_events_train('./trace_data/lu.C.4/match.csv', args.sequence_length,
+                              './trace_data/lu.C.4/partial_dataset.csv')
 
-    model = Model(dataset.n_feature_fields, dataset.n_categorical_features+1, device).to(device)
+    model = Model(dataset.n_feature_fields, dataset.n_categorical_features + 1, device).to(device)
     pytorch_total_params = sum(p.numel() for p in model.parameters())
     print('%d parameters in total' % pytorch_total_params)
     train(dataset, model, args)
 
-    torch.save(model.state_dict(), 'trace.model')
-    dataset.serialize('dataset.info')
+    torch.save(model.state_dict(), './trace_data/lu.C.4/trace.model')
+    dataset.serialize('./trace_data/lu.C.4/dataset.info')
 
-    # print('')
-    # test_begin = 0
-    # test_input = dataset.events[test_begin:test_begin + args.sequence_length].copy()
-    # test_n_event = 1000
-    #
     # print('validating model......', end='')
     # validate(dataset, model)
     # print('done')
+
+
+    # print('')
+    # test_begin = 2000
+    # test_input = dataset.events[test_begin:test_begin + args.sequence_length].copy()
+    # test_n_event = 1000
     #
     # t_begin = perf_counter()
     # predict(dataset, model, test_input, test_n_event)  # , dataset.events.shape[0] - args.sequence_length)

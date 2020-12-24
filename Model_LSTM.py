@@ -43,5 +43,5 @@ class Model(nn.Module):
         return logits, state
 
     def init_state(self, batch_size):
-        return (torch.zeros(self.num_layers, batch_size, self.lstm_size).to(self.device),
-                torch.zeros(self.num_layers, batch_size, self.lstm_size).to(self.device))
+        return (torch.zeros(self.num_layers, batch_size, self.lstm_size),
+                torch.zeros(self.num_layers, batch_size, self.lstm_size))

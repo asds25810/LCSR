@@ -33,10 +33,11 @@ class Dataset(torch.utils.data.Dataset):
         # train_df.sort_values(by='S', inplace=True) # it significantly increases loss
         train_df.drop(['request', 'op', 'S', 'E', 'D'], axis=1, inplace=True)
         train_df.dropna(axis=1, inplace=True, how='all')
-        train_df.fillna(-1, inplace=True)
+
         self.col_names = train_df.columns
 
-        train_df[0:sq_length].to_csv(dataset_eval_path, index=False, header=False)
+        train_df[4096:sq_length+4096].to_csv(dataset_eval_path, index=False, header=False)
+        train_df.fillna(-1, inplace=True)
 
         # the last column 'Blank' is a numeric feature
         self.categorical_feature_fields = self.col_names.copy().drop('Blank')
@@ -126,14 +127,14 @@ class Dataset(torch.utils.data.Dataset):
             local_index = self.onehot2local(event_onehot, column, softmax)
             # force parameter values to fit corresponding mpi function
             if shield:
-                # file must be -1 (local_index = 0) for collective functions
+                # file must be 0 (local_index = 0) for collective functions
                 if mpi_func in collectiveList and column == 'file':
                     local_index = 0
-                # unused para must be nan (local_index = feature_field_size - 1)
+                # unused para must be -1 (where local_index = 0)
                 if column not in function_para_dict[mpi_func]:
-                    local_index = self.feature_field_size[column] - 1
-                    if str(self.index2value[column][local_index]) != 'nan':
-                        print('error: unused parameter must be nan')
+                    local_index = 0 # self.feature_field_size[column] - 1
+                    if int(self.index2value[column][local_index]) != -1:
+                        print('error: unused parameter must be -1')
                 # todo: some other constraints
 
             global_index = local_index + self.index_offset[column]
@@ -146,13 +147,22 @@ class Dataset(torch.utils.data.Dataset):
     def get_event_str(self, event_raw):
         line = ''
         for feature in event_raw:
-            if str(feature).isnumeric():
-                if feature<0.0:
+            try:
+                f = float(feature)
+                if f < 0.0:
                     line += ','
                 else:
-                    line+=str(int(feature)) + ','
-            else:
+                    line += str(int(feature)) + ','
+            except ValueError:
+                # trying to convert string to float will throw ValueError
                 line += str(feature) + ','
+            # if str(feature).isnumeric(): # no method to correctly check negative float number
+            #     if feature<0.0:
+            #         line += ','
+            #     else:
+            #         line+=str(int(feature)) + ','
+            # else:
+            #     line += str(feature) + ','
         line = str.rstrip(line, ',')
         return line
 
