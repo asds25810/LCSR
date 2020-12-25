@@ -26,6 +26,7 @@ def predict(dataset, model, state_h, state_c):
     event_input, event_raw = dataset.onehot2global(last_event_logits.detach().numpy(), softmax=True, shield=True)
     dataset.events = dataset.events.shift(-1)
     dataset.events.loc[len(dataset.events.index) - 1] = event_input
+    print(dataset.shape)
 
     # output predicted events
     # print(dataset.get_event_str(event_raw))
