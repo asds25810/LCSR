@@ -20,15 +20,15 @@ np.random.seed(0)
 
 def predict(dataset, model, state_h, state_c):
     x = torch.tensor([dataset.events[0:].to_numpy()], dtype=torch.float)
-    y_pred, (state_h, state_c) = model(x, (state_h, state_c))
+    y_pred, (state_h, state_c) = model(x, (state_h.detach(), state_c.detach()))
+    # state_h = state_h.detach()
+    # state_c = state_c.detach()
 
     last_event_logits = y_pred[0][-1]
-    event_input, event_raw = dataset.onehot2global(last_event_logits.detach().numpy(), softmax=True, shield=True)
+    event_input, event_raw = dataset.onehot2global(last_event_logits.detach().numpy(), softmax=False, shield=True)
     dataset.events = dataset.events.shift(-1)
     dataset.events.loc[len(dataset.events.index) - 1] = event_input
 
-    # output predicted events
-    # print(dataset.get_event_str(event_raw))
     return event_raw, state_h, state_c
 
 
@@ -41,24 +41,29 @@ class Replayer:
 
     def check_send_buf(self, send_size):
         if send_size > self.max_send_size:
+            print('rank=%d, increase send_buf from %d to %d'%(rank, self.max_send_size, send_size))
             self.max_send_size = send_size
             self.send_buf = np.zeros(self.max_send_size, dtype=np.byte)
 
     def check_recv_buf(self, recv_size):
         if recv_size > self.max_recv_size:
+            print('rank=%d, increase recv_buf from %d to %d' % (rank, self.max_recv_size, recv_size))
             self.max_recv_size = recv_size
             self.recv_buf = np.zeros(self.max_recv_size, dtype=np.byte)
 
     def replay(self, event):
+        wait_time = event['Blank'] / 1000000.0
+        if wait_time < 0.0:
+            wait_time = 0
         mpi_func = event['function']
         if mpi_func == 'MPI_Sendrecv':
             if rank == int(event['source']) or rank == int(event['dest']):
                 # sometimes send_size != recv_size in prediction
                 data_size = max(int(event['sendcount'] * event['sendtype']), int(event['recvcount'] * event['recvtype']))
 
-                print('rank=%d, send_size=%d, recv_size=%d, replaying predicted %s' % (
-                    rank, data_size, data_size,
-                    dataset.get_event_str(event.values())))
+                # print('rank=%d, send_size=%d, recv_size=%d, replaying predicted %s' % (
+                #     rank, data_size, data_size,
+                #     dataset.get_event_str(event.values())))
 
                 if rank == int(event['source']):
                     self.check_send_buf(data_size)
@@ -68,22 +73,22 @@ class Replayer:
                     comm.Recv([self.recv_buf, data_size, MPI.BYTE], int(event['source']))
                     # comm.Sendrecv(sendbuf=send_buf, dest=int(event['dest']), recvbuf=recv_buf, source=int(event['source']),
                     #               sendtag=0, recvtag=0)
-                time.sleep(event['Blank'] / 1000000.0)
+                time.sleep(wait_time)
         elif mpi_func == 'MPI_Allreduce':
             data_size = max(int(event['count'] * event['datatype']), int(event['count'] * event['datatype']))
             self.check_send_buf(data_size)
             self.check_recv_buf(data_size)
             comm.Allreduce(sendbuf=[self.send_buf, data_size, MPI.BYTE], recvbuf=[self.recv_buf, data_size, MPI.BYTE],
                            op=MPI.MAX)  # op doesn't matter so much
-            time.sleep(event['Blank'] / 1000000.0)
+            time.sleep(wait_time)
         elif mpi_func == 'MPI_Bcast':
             data_size = int(event['count'] * event['datatype'])
             self.check_send_buf(data_size)
             comm.Bcast(buf=[self.send_buf, data_size, MPI.BYTE], root=int(event['root']))
-            time.sleep(event['Blank'] / 1000000.0)
+            time.sleep(wait_time)
         elif mpi_func == 'MPI_Barrier':
             comm.Barrier()
-            time.sleep(event['Blank'] / 1000000.0)
+            time.sleep(wait_time)
         else:
             print('error! unexpected MPI function %s' % mpi_func)
 
@@ -112,24 +117,23 @@ comm.Barrier()
 for i in range(dataset.sq_length):
     event_raw = dataset.global2raw(dataset.events.loc[i])
 
-    print('rank=%d replaying given %s' % (rank, dataset.get_event_str(event_raw)))
-    # if rank == 0:
-    #     print('replayed %d given events' % i)
+    # print('rank=%d replaying given %s' % (rank, dataset.get_event_str(event_raw)))
+    if rank == 0:
+        print('replayed %d given events' % i)
 
     replayer.replay(dict(zip(dataset.col_names, event_raw)))
-    comm.Barrier()
+    # comm.Barrier()
+
 # generate remainder events
 for i in range(0, MAX_STEPS):
     event_raw, state_h, state_c = predict(dataset, model, state_h, state_c)
 
-    # print('rank=%d, send_size=%d, recv_size=%d, replaying predicted %s' % (
-    #     rank, replayer.max_send_size, replayer.max_recv_size, dataset.get_event_str(event_raw)))
-
+    print('rank=%d replaying predicted %s' % (rank, dataset.get_event_str(event_raw)))
     replayer.replay(dict(zip(dataset.col_names, event_raw)))
     if rank == 0:
-        if i % 1 == 0:
+        if i % 1000 == 0:
             print('replayed %d predicted events' % i)
-    comm.Barrier()
+    # comm.Barrier()
 
 t_end = MPI.Wtime()
 if rank == 0:
