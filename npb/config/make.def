@@ -37,7 +37,8 @@ FLINK	= $(MPIF77)
 # These macros are passed to the linker to help link with MPI correctly
 #---------------------------------------------------------------------------
 #FMPI_LIB  = -L/home/sunjw/mpiP/mpiP/lib -lmpiP -liberty -lbfd -lm -lunwind
-FMPI_LIB  = -L/home/sunjw/mpiP/mpiP/lib -lmpiP -lm 
+LMPIP_PATH = /home/cs/sunjw/chenhongluo/LCSR/mpiP-3.5/lib
+FMPI_LIB  = -L$(LMPIP_PATH) -lmpiP -lm
 
 #---------------------------------------------------------------------------
 # These macros are passed to the compiler to help find 'mpif.h'
@@ -84,7 +85,7 @@ CLINK	= $(MPICC)
 # These macros are passed to the linker to help link with MPI correctly
 #---------------------------------------------------------------------------
 #CMPI_LIB  = -L/home/sunjw/mpiP/mpiP/lib -lmpiP -lbfd -liberty -lm -lunwind
-CMPI_LIB  = -L/home/sunjw/mpiP/mpiP/lib -lmpiP -lm 
+CMPI_LIB  = -L$(LMPIP_PATH) -lmpiP -lm
 
 #---------------------------------------------------------------------------
 # These macros are passed to the compiler to help find 'mpi.h'
