@@ -72,22 +72,22 @@ class Replayer:
                     comm.Recv([self.recv_buf, data_size, MPI.BYTE], int(event['source']))
                     # comm.Sendrecv(sendbuf=send_buf, dest=int(event['dest']), recvbuf=recv_buf, source=int(event['source']),
                     #               sendtag=0, recvtag=0)
-                sleep(event['Blank'])
+                self.sleep(event['Blank'])
         elif mpi_func == 'MPI_Allreduce':
             data_size = max(int(event['count'] * event['datatype']), int(event['count'] * event['datatype']))
             self.check_send_buf(data_size)
             self.check_recv_buf(data_size)
             comm.Allreduce(sendbuf=[self.send_buf, data_size, MPI.BYTE], recvbuf=[self.recv_buf, data_size, MPI.BYTE],
                            op=MPI.MAX)  # op doesn't matter so much
-            sleep(event['Blank'])
+            self.sleep(event['Blank'])
         elif mpi_func == 'MPI_Bcast':
             data_size = int(event['count'] * event['datatype'])
             self.check_send_buf(data_size)
             comm.Bcast(buf=[self.send_buf, data_size, MPI.BYTE], root=int(event['root']))
-            sleep(event['Blank'])
+            self.sleep(event['Blank'])
         elif mpi_func == 'MPI_Barrier':
             comm.Barrier()
-            sleep(event['Blank'])
+            self.sleep(event['Blank'])
         else:
             print('error! unexpected MPI function %s' % mpi_func)
 
