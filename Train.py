@@ -13,7 +13,7 @@ from time import perf_counter
 from Model_LSTM import Model
 from Trace_Dataset import Dataset
 
-device = torch.device('cuda:5' if torch.cuda.is_available() else 'cpu')
+device = torch.device('cuda:6' if torch.cuda.is_available() else 'cpu')
 torch.cuda.set_device(device)
 
 

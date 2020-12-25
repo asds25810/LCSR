@@ -127,7 +127,7 @@ class Dataset(torch.utils.data.Dataset):
         for column in self.categorical_feature_fields:
             local_index = self.onehot2local(event_onehot, column, softmax)
             local_index_dict[column] = local_index
-            event_raw.append(self.index2value[column][local_index])
+            # event_raw.append(self.index2value[column][local_index])
 
         # force parameter values to fit corresponding mpi function
         if shield:
@@ -135,22 +135,26 @@ class Dataset(torch.utils.data.Dataset):
                 # unused para must be -1 (where local_index = 0)
                 if column not in function_para_dict[mpi_func]:
                     local_index_dict[column] = 0
-                    event_raw[i]=self.index2value[column][0]
-                    if int(event_raw[i]) != -1:
+                    # event_raw[i]=self.index2value[column][0]
+                    if int(self.index2value[column][0]) != -1:
                         print('error: unused parameter must be -1')
                 # file must be 0 (where local_index = 0) for collective functions
                 if mpi_func in collectiveList and column == 'file':
                     local_index_dict[column] = 0
-                    event_raw[i]=self.index2value[column][0]
+                    # event_raw[i]=self.index2value[column][0]
             if mpi_func == 'MPI_Sendrecv':
                 source = self.index2value['source'][local_index_dict['source']]
                 dest = self.index2value['dest'][local_index_dict['dest']]
                 if source == dest:
-                    pass
+                    # can be better. e.g. dest = argsecondmax(), not argmax
+                    dest = (source + 1) % (self.feature_field_size['dest'] - 1)
+                    local_index_dict['dest'] = dest + 1
+                    print('error: source==dest==%d, new dest=%d'%(source, dest))
             # todo: add more constraints
 
         for i,column in enumerate(self.categorical_feature_fields):
             global_index = local_index_dict[column] + self.index_offset[column]
+            event_raw.append(self.index2value[column][local_index_dict[column]])
             event_input.append(global_index)
 
         event_input.append(blank[0])
