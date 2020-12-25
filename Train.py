@@ -173,11 +173,12 @@ if __name__ == '__main__':
     dataset.load_events_train('./trace_data/lu.C.4/match.csv', args.sequence_length,
                               './trace_data/lu.C.4/partial_dataset.csv')
 
-    model = Model(dataset.n_feature_fields, dataset.n_categorical_features + 1, device).to(device)
+    model = Model(dataset.n_feature_fields, dataset.n_categorical_features + 1).to(device)
     pytorch_total_params = sum(p.numel() for p in model.parameters())
     print('%d parameters in total' % pytorch_total_params)
     train(dataset, model, args)
 
+    model = model.to('cpu')
     torch.save(model.state_dict(), './trace_data/lu.C.4/trace.model')
     dataset.serialize('./trace_data/lu.C.4/dataset.info')
 
