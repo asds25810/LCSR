@@ -49,6 +49,10 @@ class Replayer:
             self.max_recv_size = recv_size
             self.recv_buf = np.zeros(self.max_recv_size, dtype=np.byte)
 
+    def sleep(self,v):
+        if v>0:
+            time.sleep(v / 1000000.0)
+
     def replay(self, event):
         mpi_func = event['function']
         if mpi_func == 'MPI_Sendrecv':
@@ -68,22 +72,22 @@ class Replayer:
                     comm.Recv([self.recv_buf, data_size, MPI.BYTE], int(event['source']))
                     # comm.Sendrecv(sendbuf=send_buf, dest=int(event['dest']), recvbuf=recv_buf, source=int(event['source']),
                     #               sendtag=0, recvtag=0)
-                time.sleep(event['Blank'] / 1000000.0)
+                sleep(event['Blank'])
         elif mpi_func == 'MPI_Allreduce':
             data_size = max(int(event['count'] * event['datatype']), int(event['count'] * event['datatype']))
             self.check_send_buf(data_size)
             self.check_recv_buf(data_size)
             comm.Allreduce(sendbuf=[self.send_buf, data_size, MPI.BYTE], recvbuf=[self.recv_buf, data_size, MPI.BYTE],
                            op=MPI.MAX)  # op doesn't matter so much
-            time.sleep(event['Blank'] / 1000000.0)
+            sleep(event['Blank'])
         elif mpi_func == 'MPI_Bcast':
             data_size = int(event['count'] * event['datatype'])
             self.check_send_buf(data_size)
             comm.Bcast(buf=[self.send_buf, data_size, MPI.BYTE], root=int(event['root']))
-            time.sleep(event['Blank'] / 1000000.0)
+            sleep(event['Blank'])
         elif mpi_func == 'MPI_Barrier':
             comm.Barrier()
-            time.sleep(event['Blank'] / 1000000.0)
+            sleep(event['Blank'])
         else:
             print('error! unexpected MPI function %s' % mpi_func)
 
