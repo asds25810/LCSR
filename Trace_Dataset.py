@@ -89,8 +89,8 @@ class Dataset(torch.utils.data.Dataset):
 
     def global2raw(self, event_global):
         event_raw = []
-        for column in self.categorical_feature_fields:
-            event_raw.append(self.index2value[column][int(event_global[column] - self.index_offset[column])])
+        for i,column in enumerate(self.categorical_feature_fields):
+            event_raw.append(self.index2value[column][int(event_global[i] - self.index_offset[column])])
         Blank = event_global[-1]
         Blank = np.exp(self.min_max.inverse_transform([[Blank]])[0][0])-1
         event_raw.append(Blank)

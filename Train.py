@@ -13,9 +13,9 @@ from time import perf_counter
 from Model_LSTM import Model
 from Trace_Dataset import Dataset
 
-device = torch.device('cuda:6' if torch.cuda.is_available() else 'cpu')
+device = torch.device('cuda:3' if torch.cuda.is_available() else 'cpu')
 torch.cuda.set_device(device)
-
+data_path = './trace_data/lu.D.8/'
 
 def train(dataset, model, args):
     model.train()
@@ -83,7 +83,7 @@ def train(dataset, model, args):
 
 
 def validate(dataset, model):
-    with open('validate.txt', 'w') as file:
+    with open(data_path+'validate.txt', 'w') as file:
         model.eval()
         dataloader = DataLoader(
             dataset,
@@ -149,7 +149,7 @@ def predict(dataset, model, events, next_events=1000):
 
     for i in range(0, next_events):
         x = torch.tensor([events[i:].to_numpy()], dtype=torch.float)
-        y_pred, (state_h, state_c) = model(x, (state_h, state_c))
+        y_pred, (state_h, state_c) = model(x, (state_h.detach(), state_c.detach()))
 
         last_event_logits = y_pred[0][-1]
         event_input, event_raw = dataset.onehot2global(last_event_logits.detach().numpy(), softmax=False,
@@ -170,8 +170,8 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     dataset = Dataset()
-    dataset.load_events_train('./trace_data/lu.C.4/match.csv', args.sequence_length,
-                              './trace_data/lu.C.4/partial_dataset.csv')
+    dataset.load_events_train(data_path+'match.csv', args.sequence_length,
+                              data_path+'partial_dataset.csv')
 
     model = Model(dataset.n_feature_fields, dataset.n_categorical_features + 1).to(device)
     pytorch_total_params = sum(p.numel() for p in model.parameters())
@@ -179,8 +179,8 @@ if __name__ == '__main__':
     train(dataset, model, args)
 
     model = model.to('cpu')
-    torch.save(model.state_dict(), './trace_data/lu.C.4/trace.model')
-    dataset.serialize('./trace_data/lu.C.4/dataset.info')
+    torch.save(model.state_dict(), data_path+'trace.model')
+    dataset.serialize(data_path+'dataset.info')
 
     # print('validating model......', end='')
     # validate(dataset, model)
