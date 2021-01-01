@@ -1,5 +1,4 @@
 import torch
-from torch import nn
 import numpy as np
 from sklearn import preprocessing
 import scipy.special
@@ -31,12 +30,12 @@ class Dataset(torch.utils.data.Dataset):
         train_df = pd.read_csv(dataset_train_path, header=None)
         train_df.columns = event_para_dict.keys()
         # train_df.sort_values(by='S', inplace=True) # it significantly increases loss
-        train_df.drop(['request', 'op', 'S', 'E', 'D'], axis=1, inplace=True)
-        train_df.dropna(axis=1, inplace=True, how='all')
+        # train_df.drop(['request', 'op', 'S', 'E', 'D'], axis=1, inplace=True)
+        # train_df.dropna(axis=1, inplace=True, how='all')
 
         self.col_names = train_df.columns
 
-        train_df[4096:sq_length+4096].to_csv(dataset_eval_path, index=False, header=False)
+        train_df[8192:sq_length+8192].to_csv(dataset_eval_path, index=False, header=False)
         train_df.fillna(-1, inplace=True)
 
         # the last column 'Blank' is a numeric feature
@@ -103,6 +102,8 @@ class Dataset(torch.utils.data.Dataset):
         feature_field = event_onehot[
                         self.index_offset[column]:self.index_offset[column] + self.feature_field_size[column]]
         if softmax:
+            if column != 'function':# and column != 'file':
+                feature_field = feature_field[1:] # ignore N/A
             p = scipy.special.softmax(feature_field)
             local_index = np.random.choice(len(feature_field), p=p)
         else:
@@ -122,11 +123,14 @@ class Dataset(torch.utils.data.Dataset):
         # first, decode mpi function name
         local_index = self.onehot2local(event_onehot, 'function', softmax)
         mpi_func = self.index2value['function'][local_index]
+        local_index_dict['function'] = local_index
+
         if mpi_func not in function_para_dict.keys():
             print('error: unexpected mpi function')
         for column in self.categorical_feature_fields:
-            local_index = self.onehot2local(event_onehot, column, softmax)
-            local_index_dict[column] = local_index
+            if column in function_para_dict[mpi_func] and column != 'function':
+                local_index = self.onehot2local(event_onehot, column, softmax)
+                local_index_dict[column] = local_index
             # event_raw.append(self.index2value[column][local_index])
 
         # force parameter values to fit corresponding mpi function
@@ -139,18 +143,22 @@ class Dataset(torch.utils.data.Dataset):
                     if int(self.index2value[column][0]) != -1:
                         print('error: unused parameter must be -1')
                 # file must be 0 (where local_index = 0) for collective functions
-                if mpi_func in collectiveList and column == 'file':
-                    local_index_dict[column] = 0
+                # if mpi_func in collectiveList and column == 'file':
+                #     local_index_dict[column] = 0
                     # event_raw[i]=self.index2value[column][0]
-            if mpi_func == 'MPI_Sendrecv':
-                source = self.index2value['source'][local_index_dict['source']]
-                dest = self.index2value['dest'][local_index_dict['dest']]
-                if source == dest:
-                    # can be better. e.g. dest = argsecondmax(), not argmax
-                    dest = (source + 1) % (self.feature_field_size['dest'] - 1)
-                    local_index_dict['dest'] = dest + 1
-                    print('error: source==dest==%d, new dest=%d'%(source, dest))
+            # if mpi_func == 'MPI_Sendrecv':
+                # same source and dest problem is processed in replayer
+                # pass
+                # source = int(self.index2value['source'][local_index_dict['source']])
+                # dest = int(self.index2value['dest'][local_index_dict['dest']])
+                # if source == dest:
+                #     # can be better. e.g. dest = argsecondmax(), not argmax
+                #     dest = (source + 1) % (self.feature_field_size['dest'] - 1)
+                #     local_index_dict['dest'] = dest + 1
+                #     print('error: source==dest==%d, new dest=%d'%(source, dest))
             # todo: add more constraints
+        else:
+            print('error: shield must be true in current version')
 
         for i,column in enumerate(self.categorical_feature_fields):
             global_index = local_index_dict[column] + self.index_offset[column]

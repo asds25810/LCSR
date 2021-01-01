@@ -1,13 +1,7 @@
-import argparse
-import mpi4py
 from mpi4py import MPI
-from MPI_define import *
 import numpy as np
-import argparse
-import torch
 from Model_LSTM import *
 from Trace_Dataset import Dataset
-import pandas as pd
 import time
 
 device = torch.device('cpu')
@@ -18,16 +12,17 @@ np.random.seed(0)
 # global variables
 time_infer = 0
 time_decode = 0
-time_shift = 0
-data_path = './trace_data/lu.D.8/'
+
+data_path = './trace_data/cg.D.16/'
 flag_replay = False
+flag_profile = True
 
 def predict(dataset, dataset_np, index, model, state_h, state_c):
     x = torch.tensor([[dataset_np[index]]], dtype=torch.float)
-    if rank==0:
+    if rank==0 and flag_profile:
         begin = time.perf_counter_ns()
     y_pred, (state_h, state_c) = model(x, (state_h.detach(), state_c.detach()))
-    if rank==0:
+    if rank==0 and flag_profile:
         end = time.perf_counter_ns()
         global time_infer
         time_infer+=end-begin
@@ -36,23 +31,15 @@ def predict(dataset, dataset_np, index, model, state_h, state_c):
     # state_c = state_c.detach()
 
     last_event_logits = y_pred[0][0]
-    if rank==0:
+    if rank==0 and flag_profile:
         begin = time.perf_counter_ns()
     event_input, event_raw = dataset.onehot2global(last_event_logits.detach().numpy(), softmax=False, shield=True)
-    if rank==0:
+    if rank==0 and flag_profile:
         end = time.perf_counter_ns()
         global time_decode
         time_decode+=end-begin
 
-    if rank==0:
-        begin = time.perf_counter_ns()
-    # dataset.events = dataset.events.shift(-1)
     dataset_np[index] = np.array(event_input)
-    if rank==0:
-        end = time.perf_counter_ns()
-        global time_shift
-        time_shift+=end-begin
-
     return event_raw, state_h, state_c
 
 
@@ -82,24 +69,33 @@ class Replayer:
         mpi_func = event['function']
         if mpi_func == 'MPI_Sendrecv':
             if rank == int(event['source']) or rank == int(event['dest']):
-                # sometimes send_size != recv_size in prediction
-                data_size = max(int(event['sendcount'] * event['sendtype']), int(event['recvcount'] * event['recvtype']))
+                # if source == dest, do nothing
+                if int(event['source']) != int(event['dest']):
+                    # sometimes send_size != recv_size in prediction
+                    data_size = int(event['count'] * event['datatype']),
 
-                # print('rank=%d, send_size=%d, recv_size=%d, replaying predicted %s' % (
-                #     rank, data_size, data_size,
-                #     dataset.get_event_str(event.values())))
+                    # print('rank=%d, send_size=%d, recv_size=%d, replaying predicted %s' % (
+                    #     rank, data_size, data_size,
+                    #     dataset.get_event_str(event.values())))
 
-                if rank == int(event['source']):
-                    self.check_send_buf(data_size)
-                    comm.Send([self.send_buf, data_size, MPI.BYTE], int(event['dest']))
-                if rank == int(event['dest']):
-                    self.check_recv_buf(data_size)
-                    comm.Recv([self.recv_buf, data_size, MPI.BYTE], int(event['source']))
-                    # comm.Sendrecv(sendbuf=send_buf, dest=int(event['dest']), recvbuf=recv_buf, source=int(event['source']),
-                    #               sendtag=0, recvtag=0)
+                    if rank == int(event['source']):
+                        self.check_send_buf(data_size)
+                        comm.Send([self.send_buf, data_size, MPI.BYTE], int(event['dest']))
+                    if rank == int(event['dest']):
+                        self.check_recv_buf(data_size)
+                        comm.Recv([self.recv_buf, data_size, MPI.BYTE], int(event['source']))
+                        # comm.Sendrecv(sendbuf=send_buf, dest=int(event['dest']), recvbuf=recv_buf, source=int(event['source']),
+                        #               sendtag=0, recvtag=0)
                 time.sleep(wait_time)
+        elif mpi_func == 'MPI_Reduce':
+            data_size = int(event['count'] * event['datatype'])
+            self.check_send_buf(data_size)
+            self.check_recv_buf(data_size)
+            comm.Reduce(sendbuf=[self.send_buf, data_size, MPI.BYTE], recvbuf=[self.recv_buf, data_size, MPI.BYTE],
+                           op=MPI.MAX, root=int(event['root']))  # op doesn't matter so much
+            time.sleep(wait_time)
         elif mpi_func == 'MPI_Allreduce':
-            data_size = max(int(event['count'] * event['datatype']), int(event['count'] * event['datatype']))
+            data_size = int(event['count'] * event['datatype'])
             self.check_send_buf(data_size)
             self.check_recv_buf(data_size)
             comm.Allreduce(sendbuf=[self.send_buf, data_size, MPI.BYTE], recvbuf=[self.recv_buf, data_size, MPI.BYTE],
@@ -165,6 +161,7 @@ end = 0
 for i in range(0, MAX_STEPS):
     if rank == 0:
         begin = time.perf_counter_ns()
+    # state_h, state_c = model.init_state(1)
     event_raw, state_h, state_c = predict(dataset, dataset_np, 0, model, state_h, state_c)
     if rank == 0:
         end = time.perf_counter_ns()
@@ -188,12 +185,11 @@ for i in range(0, MAX_STEPS):
             print('Average time for replaying an event: %.1fus' % (time_replay / (i+1)/1000.0))
             print('Average time for inference: %.1fus' % (time_infer / (i + 1)/1000.0))
             print('Average time for decoding: %.1fus' % (time_decode / (i + 1)/1000.0))
-            print('Average time for shift: %.1fus' % (time_shift / (i + 1)/1000.0))
     # comm.Barrier()
 
 t_end = MPI.Wtime()
 if rank == 0:
-    print('Total time cost for %d events: %f' % (MAX_STEPS+dataset.sq_length, t_end - t_begin))
+    print('Total time cost for %d events: %fs' % (MAX_STEPS+dataset.sq_length, t_end - t_begin))
     print('Average time for predicting a event: %.1fus'%(time_prediction/MAX_STEPS/1000.0))
     print('Average time for replaying a event: %.1fus'%(time_replay/MAX_STEPS/1000.0))
 

@@ -1,6 +1,6 @@
 README
 
-npb: 目标应用，包括IS和LU
+app: target applications, including NPB CG and LU, and LULESH
 mpiP-3.5 用于生成trace
     mpiPi.h 一些重要全局信息位于mpiPi_t结构体中
     mpiPi.c mpiP的主要运行逻辑
@@ -12,7 +12,7 @@ dwarfcode 用于进程间合并
     combine 进程间trace合并
 Train.py 数据预处理（删除无用列，将每个feature field处理为global index for embedding table和one-hot两种形式）、训练和测试
 Replay.py 回放trace
-preprocess_combine.py 群集通信只保留一行，p2p通信将Send转换为Sendrecv，删除Recv/Irecv
+Match.py 群集通信只保留一行，p2p通信将Send转换为Sendrecv，删除Recv/Irecv
 Transform.py 将多个MPI函数数据格式合并
 MPI_define.py 定义MPI相关的信息
 Model_LSTM.py LSTM model 
@@ -28,6 +28,6 @@ Trace_Dataset.py Dataset class for processing trace data
 6. 运行order 0.symbol 0.order np，生成[0:np].order
 7. 运行combine 0.order 0.combine，生成0.combine
 8. 运行Transform.py，生成combine.csv
-9. 运行preprocess_combine.py，生成match.csv
+9. 运行Match.py，生成match.csv
 10. 运行Train.py
 11. 运行mpirun -np np python Replay.py

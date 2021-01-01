@@ -1,26 +1,19 @@
-import pandas as pd
-import os
 from MPI_define import *
-import sys
 
 event_list = []
 
 
 def send2sendrecv(send):
-    sendrecv = [''] * len(send)
+    sendrecv = [''] * len(event_para_dict.items())
     for (para, index) in event_para_dict.items():
-        if para in send_para_list and para in sendrecv_para_list:
+        if para in function_para_dict['MPI_Send'] and para in function_para_dict['MPI_Sendrecv']:
             sendrecv[index] = send[index]
     sendrecv[event_para_dict['function']] = 'MPI_Sendrecv'
     sendrecv[event_para_dict['source']] = sendrecv[event_para_dict['file']]
-    sendrecv[event_para_dict['sendcount']] = send[event_para_dict['count']]
-    sendrecv[event_para_dict['recvcount']] = send[event_para_dict['count']]
-    sendrecv[event_para_dict['sendtype']] = send[event_para_dict['datatype']]
-    sendrecv[event_para_dict['recvtype']] = send[event_para_dict['datatype']]
     return sendrecv
 
 n_events = 0
-with open("./trace_data/lu.C.4/combine.csv") as file:
+with open("./trace_data/cg.D.16/combine.csv") as file:
     line = file.readline().rstrip('\n')
     while line:
         n_events += 1
@@ -55,7 +48,8 @@ with open("./trace_data/lu.C.4/combine.csv") as file:
                     same_list[i] = send2sendrecv(same_list[i])
                     # p2p通信每个进程上的都需要保留，加入event_list
                     event_list.append(same_list[i])
-            elif 'MPI_Recv' == mpi_func_name or 'MPI_Irecv' == mpi_func_name or 'MPI_Wait' == mpi_func_name:
+            elif 'MPI_Recv' == mpi_func_name or 'MPI_Irecv' == mpi_func_name or \
+                 'MPI_Wait' == mpi_func_name or 'MPI_Waitall' == mpi_func_name:
                 # 忽略trace中原有的Recv/Irecv/Wait
                 pass
             else:
@@ -66,8 +60,8 @@ with open("./trace_data/lu.C.4/combine.csv") as file:
         line = file.readline().rstrip('\n')
 
 n_events = 0
-with open("./trace_data/lu.C.4/match.csv", 'w') as file:
-    for event in event_list:
+with open("./trace_data/cg.D.16/match.csv", 'w') as file:
+    for event in event_list[1:]:  # file information is ignored
         n_events += 1
         if n_events % 10000 == 0:
             print('writing %d/%d event'% (n_events, len(event_list)))

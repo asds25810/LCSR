@@ -3,19 +3,34 @@ import torch
 import numpy as np
 from torch import nn, optim
 from torch.utils.data import DataLoader
-import pandas as pd
-from collections import Counter
-from MPI_define import *
-from sklearn import preprocessing
-import matplotlib.pyplot as plt
-import scipy.special
-from time import perf_counter
 from Model_LSTM import Model
 from Trace_Dataset import Dataset
 
-device = torch.device('cuda:3' if torch.cuda.is_available() else 'cpu')
+device = torch.device('cuda:6' if torch.cuda.is_available() else 'cpu')
 torch.cuda.set_device(device)
-data_path = './trace_data/lu.D.8/'
+data_path = './trace_data/cg.D.16/'
+
+class DataPrefetcher():
+    def __init__(self, loader):
+        self.loader = iter(loader)
+        self.stream = torch.cuda.Stream()
+        self.preload()
+
+    def preload(self):
+        try:
+            self.batch = next(self.loader)
+        except StopIteration:
+            self.batch = None
+            return
+        with torch.cuda.stream(self.stream):
+            self.batch[0] = self.batch[0].to(device=device, non_blocking=True) # x
+            self.batch[1] = self.batch[1].to(device=device, non_blocking=True) # y
+
+    def next(self):
+        torch.cuda.current_stream().wait_stream(self.stream)
+        batch = self.batch
+        self.preload()
+        return batch
 
 def train(dataset, model, args):
     model.train()
@@ -28,25 +43,27 @@ def train(dataset, model, args):
         drop_last=True,
         shuffle=True
     )
-
     criterion_num = nn.MSELoss()
     criterion_cat = nn.CrossEntropyLoss()
 
     optimizer = optim.Adam(model.parameters(), lr=0.01)
     scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=[15, 30], gamma=0.1)
-    # scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.1)
-    # scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=2000, gamma=0.1)
-    # optimizer = optim.RMSprop(model.parameters(), lr=0.01)
+
+
 
     for epoch in range(args.max_epochs):
+        prefetcher = DataPrefetcher(dataloader)
+        batch = prefetcher.next()
+        batch_id = 0
         # state_h, state_c = model.init_state(args.sequence_length)
-        for batch, (x, y) in enumerate(dataloader):
+        while batch is not None:
             state_h, state_c = model.init_state(args.batch_size)
             state_h = state_h.to(device)
             state_c = state_c.to(device)
             optimizer.zero_grad()
-            x = x.to(device)
-            y = y.to(device)
+            (x, y) = batch
+            # x = x.to(device)
+            # y = y.to(device)
             y_pred, (state_h, state_c) = model(x, (state_h, state_c))
 
             # loss for numerical feature field
@@ -66,18 +83,12 @@ def train(dataset, model, args):
             loss.backward()
             optimizer.step()
 
-            if batch % 20 == 0:
-                print({'epoch': epoch, 'batch': batch, 'lr': scheduler.get_last_lr(), 'loss_cat': loss_cat.item(),
+            if batch_id % 20 == 0:
+                print({'epoch': epoch, 'batch': batch_id, 'lr': scheduler.get_last_lr(), 'loss_cat': loss_cat.item(),
                        'loss_num': loss_num.item()})
 
-                # for debug
-                # y_pred_plt = y_pred.detach().to('cpu').numpy()[0][-1]
-                # y_plt = y.detach().to('cpu').numpy()[0][-1]
-                # _, event_pred = dataset.decode_onehot(y_pred_plt)
-                # _, event = dataset.decode_onehot(y_plt)
-                # print(dataset.get_event_str(event))
-                # print(dataset.get_event_str(event_pred))
-                # print('')
+            batch_id+=1
+            batch = prefetcher.next()
 
         scheduler.step()
 
@@ -98,7 +109,7 @@ def validate(dataset, model):
         state_h, state_c = model.init_state(args.batch_size)
         state_h = state_h.to(device)
         state_c = state_c.to(device)
-        for batch, (x, y) in enumerate(dataloader):
+        for batch_id, (x, y) in enumerate(dataloader):
             x = x.to(device)
             y = y.to(device)
             y_pred, (state_h, state_c) = model(x, (state_h, state_c))
@@ -117,7 +128,7 @@ def validate(dataset, model):
             state_h = state_h.detach()
             state_c = state_c.detach()
 
-            if (batch + 1) * args.batch_size >= len(dataset):
+            if (batch_id + 1) * args.batch_size >= len(dataset):
                 break
             y = y.detach().to('cpu').numpy()
             y_pred = y_pred.detach().to('cpu').numpy()
@@ -138,7 +149,7 @@ def validate(dataset, model):
                 file.write('%f %f\n' % (loss_cat, loss_num))
                 file.write(event + '\n')
                 file.write(event_pred + '\n')
-            print(batch)
+            print(batch_id)
 
 
 def predict(dataset, model, events, next_events=1000):
@@ -163,7 +174,7 @@ def predict(dataset, model, events, next_events=1000):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--max-epochs', type=int, default=1)
+    parser.add_argument('--max-epochs', type=int, default=5)
     parser.add_argument('--batch-size', type=int, default=128)
     parser.add_argument('--sequence-length', type=int, default=128)
     parser.add_argument('--data-dir', type=str, default='')

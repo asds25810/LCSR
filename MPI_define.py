@@ -45,63 +45,61 @@ pt2ptList = [
     "MPI_Ssend",
     "MPI_Recv",
     "MPI_Irecv",
-    "MPI_Wait"
+    "MPI_Wait",
+    "MPI_Waitall"
 ]
 
-send_para_list = [
-    'file',
-    'function',
-    'count',
-    'datatype',
-    'dest',
-    'S',
-    'E',
-    'D',
-    'Blank'
-]
-
-sendrecv_para_list = [
-    'file',
-    'function',
-    'source',
-    'dest',
-    'sendcount',
-    'sendtype',
-    'recvcount',
-    'recvtype',
-    'S',
-    'E',
-    'D',
-    'Blank'
-]
 
 function_para_dict = {
-    'MPI_Allreduce' : ['file', 'function', 'count', 'datatype', 'Op', 'Blank'],
-    'MPI_Sendrecv': ['file', 'function', 'source', 'dest', 'sendcount', 'sendtype', 'recvcount', 'recvtype', 'Blank'],
+    'MPI_Reduce' : ['file', 'function', 'count', 'datatype',  'root', 'Blank'],
+    'MPI_Allreduce' : ['file', 'function', 'count', 'datatype', 'Blank'],
+    'MPI_Sendrecv': ['file', 'function', 'source', 'dest', 'count', 'datatype', 'Blank'],
+    'MPI_Send':['file', 'function', 'dest', 'count', 'datatype', 'Blank'],
     'MPI_Barrier' : ['file', 'function', 'Blank'],
     'MPI_Bcast' : ['file', 'function','count','datatype','root', 'Blank'],
+}
+
+para_reduce_dict = {
+    'function':0,
+    'count':1,
+    'datatype':2,
+    'source':3,
+    'dest': 4,
+    'root':5,
+    'Blank':6
 }
 
 event_para_dict = {
     'file': 0,
     'function': 1,
-    'incount': 2,
-    'count': 3,
-    'datatype': 4,
-    'source': 5,
-    'dest': 6,
-    'request': 7,
-    'sendcount': 8,
-    'sendcnt': 9,
-    'sendcnts': 10,
-    'sendtype': 11,
-    'recvcount': 12,
-    'recvcnt': 13,
-    'recvcnts': 14,
-    'recvtype': 15,
-    'op': 16,
-    'root': 17,
-    'S': 18,
-    'E': 19,
-    'D': 20,
-    'Blank': 21}
+    'count': 2,
+    'datatype': 3,
+    'source': 4,
+    'dest': 5,
+    'root': 6,
+    'Blank': 7
+}
+
+# event_para_dict = {
+#     'file': 0,
+#     'function': 1,
+#     'incount': 2,
+#     'count': 3,
+#     'datatype': 4,
+#     'source': 5,
+#     'dest': 6,
+#     'request': 7,
+#     'sendcount': 8,
+#     'sendcnt': 9,
+#     'sendcnts': 10,
+#     'sendtype': 11,
+#     'recvcount': 12,
+#     'recvcnt': 13,
+#     'recvcnts': 14,
+#     'recvtype': 15,
+#     'op': 16,
+#     'root': 17,
+#     'S': 18,
+#     'E': 19,
+#     'D': 20,
+#     'Blank': 21}
