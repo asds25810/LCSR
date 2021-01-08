@@ -175,8 +175,8 @@ def predict(dataset, model, events, next_events=1000):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--max-epochs', type=int, default=5)
-    parser.add_argument('--batch-size', type=int, default=128)
-    parser.add_argument('--sequence-length', type=int, default=128)
+    parser.add_argument('--batch-size', type=int, default=256)
+    parser.add_argument('--sequence-length', type=int, default=1024)
     parser.add_argument('--data-dir', type=str, default='')
     args = parser.parse_args()
 

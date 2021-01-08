@@ -13,7 +13,7 @@ np.random.seed(0)
 time_infer = 0
 time_decode = 0
 
-data_path = './trace_data/cg.D.16/'
+data_path = '/data/sunjw/LCSR/CG-D-128/'
 flag_replay = False
 flag_profile = True
 

@@ -5,9 +5,9 @@ import matplotlib.pyplot as plt
 import pickle
 from matplotlib.colors import LogNorm
 
-nprocs = 16
-file_path = "./trace_data/cg.D.16/"
-file_name = "match.csv"
+nprocs = 128
+file_path = "./trace_data/lulesh.8/"
+file_name = "prediction.csv"
 # 处理器数目，文件名，根据文件名为判断使用哪一个字典(match.csv 或者 prediction.csv)
 result = [[0 for _ in range(nprocs)] for _ in range(nprocs)]
 # the communication volume (in byte)，计算结束后将结果保存为res.csv文件
@@ -59,7 +59,7 @@ def manage_data():
         line = file.readline().rstrip('\n')
         while line:
             n_events += 1
-            if n_events % 10000 == 0:
+            if n_events % 20000 == 0:
                 print('%d managed events, %s' % (n_events, line))
 
             data = line.split(',')
@@ -111,7 +111,8 @@ def load_res():
 
 def create_picture(matrix):
     plt.figure(figsize=(8, 6))
-    sns.heatmap(matrix, cmap="binary", linecolor='Black', linewidths=0.5, norm=LogNorm(vmin=1000))
+    # sns.heatmap(matrix, cmap="binary", linecolor='Black', linewidths=0.5, norm=LogNorm(vmin=1000))
+    sns.heatmap(matrix, cmap="binary", linecolor='Black', norm=LogNorm(vmin=1000))
     plt.xlabel("Sender Rank")
     plt.ylabel("Receiver Rank")
     plt.ylim(0, nprocs)

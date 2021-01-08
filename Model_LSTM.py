@@ -5,9 +5,9 @@ from torch import nn
 class Model(nn.Module):
     def __init__(self, n_feature_fields, n_features):
         super(Model, self).__init__()
-        self.lstm_size = 8
-        self.embedding_dim = 4
-        self.num_layers = 2
+        self.lstm_size = 32
+        self.embedding_dim = 8
+        self.num_layers = 3
 
         self.embedding = nn.Embedding(
             num_embeddings=n_features-1,

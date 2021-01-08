@@ -1,7 +1,7 @@
 from MPI_define import *
 
 event_list = []
-
+data_path = './trace_data/lulesh.8/'
 
 def send2sendrecv(send):
     sendrecv = [''] * len(event_para_dict.items())
@@ -13,7 +13,7 @@ def send2sendrecv(send):
     return sendrecv
 
 n_events = 0
-with open("./trace_data/cg.D.16/combine.csv") as file:
+with open(data_path+"combine.csv") as file:
     line = file.readline().rstrip('\n')
     while line:
         n_events += 1
@@ -60,7 +60,7 @@ with open("./trace_data/cg.D.16/combine.csv") as file:
         line = file.readline().rstrip('\n')
 
 n_events = 0
-with open("./trace_data/cg.D.16/match.csv", 'w') as file:
+with open(data_path+"match.csv", 'w') as file:
     for event in event_list[1:]:  # file information is ignored
         n_events += 1
         if n_events % 10000 == 0:

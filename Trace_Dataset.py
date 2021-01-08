@@ -6,6 +6,7 @@ from MPI_define import *
 import pandas as pd
 import pickle
 
+
 class Dataset(torch.utils.data.Dataset):
     def __init__(self):
         self.n_events = 0
@@ -35,12 +36,12 @@ class Dataset(torch.utils.data.Dataset):
 
         self.col_names = train_df.columns
 
-        train_df[8192:sq_length+8192].to_csv(dataset_eval_path, index=False, header=False)
+        train_df[8192:sq_length + 8192].to_csv(dataset_eval_path, index=False, header=False)
         train_df.fillna(-1, inplace=True)
 
         # the last column 'Blank' is a numeric feature
         self.categorical_feature_fields = self.col_names.copy().drop('Blank')
-        train_df['Blank'] =  self.min_max.fit_transform(np.log(train_df['Blank'].to_numpy().reshape(-1, 1)+1))
+        train_df['Blank'] = self.min_max.fit_transform(np.log(train_df['Blank'].to_numpy().reshape(-1, 1) + 1))
         # fig, ax = plt.subplots(1, 1)
         # ax.hist(train_df['Blank'].to_numpy(), bins=100)
         # plt.show()
@@ -52,7 +53,7 @@ class Dataset(torch.utils.data.Dataset):
             # get unique values in each column
             indices, values = pd.factorize(train_df[column], na_sentinel=None, sort=True)
             self.index2value[column] = values
-            self.value2index[column] = {value:index for index, value in enumerate(values)}
+            self.value2index[column] = {value: index for index, value in enumerate(values)}
             # assign global indices
             self.index_offset[column] = self.n_categorical_features
             self.index_offset_np.append(self.index_offset[column])
@@ -67,10 +68,9 @@ class Dataset(torch.utils.data.Dataset):
         self.index_offset_np = np.array(self.index_offset_np)
         # self.index_offset_np = np.array(self.index_offset.values())  # is it equivalent???
 
-        self.events = train_df
+        self.events = train_df.to_numpy()
         self.n_events = len(self.events)
         print('done')
-
 
     def load_events_eval(self, dataset_path, dataset_info_path):
         self.deserialize(dataset_info_path)
@@ -78,23 +78,22 @@ class Dataset(torch.utils.data.Dataset):
         eval_df.columns = self.col_names
         eval_df.fillna(-1, inplace=True)
 
-        eval_df['Blank'] = self.min_max.transform(np.log(eval_df['Blank'].to_numpy().reshape(-1, 1)+1))
+        eval_df['Blank'] = self.min_max.transform(np.log(eval_df['Blank'].to_numpy().reshape(-1, 1) + 1))
 
         # convert raw format to global index format
         for column in self.categorical_feature_fields:
             for row in range(len(eval_df[column])):
                 eval_df.at[row, column] = self.value2index[column][eval_df.at[row, column]] + self.index_offset[column]
-        self.events = eval_df
+        self.events = eval_df.to_numpy()
 
     def global2raw(self, event_global):
         event_raw = []
-        for i,column in enumerate(self.categorical_feature_fields):
+        for i, column in enumerate(self.categorical_feature_fields):
             event_raw.append(self.index2value[column][int(event_global[i] - self.index_offset[column])])
         Blank = event_global[-1]
-        Blank = np.exp(self.min_max.inverse_transform([[Blank]])[0][0])-1
+        Blank = np.exp(self.min_max.inverse_transform([[Blank]])[0][0]) - 1
         event_raw.append(Blank)
         return event_raw
-
 
     # convert one-hot format (used in prediction data) to
     # local index format (used in label data)
@@ -102,8 +101,8 @@ class Dataset(torch.utils.data.Dataset):
         feature_field = event_onehot[
                         self.index_offset[column]:self.index_offset[column] + self.feature_field_size[column]]
         if softmax:
-            if column != 'function':# and column != 'file':
-                feature_field = feature_field[1:] # ignore N/A
+            if column != 'function':  # and column != 'file':
+                feature_field = feature_field[1:]  # ignore N/A
             p = scipy.special.softmax(feature_field)
             local_index = np.random.choice(len(feature_field), p=p)
         else:
@@ -135,7 +134,7 @@ class Dataset(torch.utils.data.Dataset):
 
         # force parameter values to fit corresponding mpi function
         if shield:
-            for i,column in enumerate(self.categorical_feature_fields):
+            for i, column in enumerate(self.categorical_feature_fields):
                 # unused para must be -1 (where local_index = 0)
                 if column not in function_para_dict[mpi_func]:
                     local_index_dict[column] = 0
@@ -145,28 +144,28 @@ class Dataset(torch.utils.data.Dataset):
                 # file must be 0 (where local_index = 0) for collective functions
                 # if mpi_func in collectiveList and column == 'file':
                 #     local_index_dict[column] = 0
-                    # event_raw[i]=self.index2value[column][0]
+                # event_raw[i]=self.index2value[column][0]
             # if mpi_func == 'MPI_Sendrecv':
-                # same source and dest problem is processed in replayer
-                # pass
-                # source = int(self.index2value['source'][local_index_dict['source']])
-                # dest = int(self.index2value['dest'][local_index_dict['dest']])
-                # if source == dest:
-                #     # can be better. e.g. dest = argsecondmax(), not argmax
-                #     dest = (source + 1) % (self.feature_field_size['dest'] - 1)
-                #     local_index_dict['dest'] = dest + 1
-                #     print('error: source==dest==%d, new dest=%d'%(source, dest))
+            # same source and dest problem is processed in replayer
+            # pass
+            # source = int(self.index2value['source'][local_index_dict['source']])
+            # dest = int(self.index2value['dest'][local_index_dict['dest']])
+            # if source == dest:
+            #     # can be better. e.g. dest = argsecondmax(), not argmax
+            #     dest = (source + 1) % (self.feature_field_size['dest'] - 1)
+            #     local_index_dict['dest'] = dest + 1
+            #     print('error: source==dest==%d, new dest=%d'%(source, dest))
             # todo: add more constraints
         else:
             print('error: shield must be true in current version')
 
-        for i,column in enumerate(self.categorical_feature_fields):
+        for i, column in enumerate(self.categorical_feature_fields):
             global_index = local_index_dict[column] + self.index_offset[column]
             event_raw.append(self.index2value[column][local_index_dict[column]])
             event_input.append(global_index)
 
         event_input.append(blank[0])
-        event_raw.append(np.exp(blank_raw)-1)
+        event_raw.append(np.exp(blank_raw) - 1)
         return event_input, event_raw
 
     def get_event_str(self, event_raw):
@@ -193,20 +192,20 @@ class Dataset(torch.utils.data.Dataset):
 
     def serialize(self, dataset_info_path):
         dataset_info = {
-            'n_events':self.n_events,
-            'sq_length':self.sq_length,
-            'n_feature_fields':self.n_feature_fields,
-            'n_categorical_features':self.n_categorical_features,
-            'feature_field_size':self.feature_field_size,
-            'index2value':self.index2value,
-            'value2index':self.value2index,
-            'index_offset':self.index_offset,
+            'n_events': self.n_events,
+            'sq_length': self.sq_length,
+            'n_feature_fields': self.n_feature_fields,
+            'n_categorical_features': self.n_categorical_features,
+            'feature_field_size': self.feature_field_size,
+            'index2value': self.index2value,
+            'value2index': self.value2index,
+            'index_offset': self.index_offset,
             # 'index_offset_np':self.index_offset_np,
-            'categorical_feature_fields':self.categorical_feature_fields,
-            'col_names':self.col_names,
-            'min_max':self.min_max
+            'categorical_feature_fields': self.categorical_feature_fields,
+            'col_names': self.col_names,
+            'min_max': self.min_max
         }
-        with open(dataset_info_path,'wb') as file:
+        with open(dataset_info_path, 'wb') as file:
             pickle.dump(dataset_info, file)
 
     def deserialize(self, dataset_info_path):
@@ -226,12 +225,12 @@ class Dataset(torch.utils.data.Dataset):
         self.min_max = dataset_info['min_max']
 
     def __len__(self):
-        return len(self.events) - self.sq_length
+        return len(self.events) - self.sq_length - 128
 
     def __getitem__(self, index):
         # x is global index format, y is local index format
         # local = global - offset
-        x = torch.tensor(self.events[index:index + self.sq_length].to_numpy(), dtype=torch.float)
-        y = torch.tensor(self.events[index + 1:index + self.sq_length + 1].to_numpy() - self.index_offset_np,
-                         dtype=torch.float)
+        x = torch.tensor(self.events[index:index + self.sq_length], dtype=torch.float)
+        y = torch.tensor(self.events[index + 128:index + 128 + self.sq_length] -
+                         self.index_offset_np, dtype=torch.float)
         return x, y

@@ -12,7 +12,7 @@ para_dict = {
     'Blank': 7
 }
 
-data_path = './trace_data/cg.D.16/'
+data_path = './trace_data/lulesh.8/'
 f_in = open(data_path+"0.combine", 'r')
 f_out = open(data_path+"combine.csv", 'w', encoding='utf8', newline='')
 
