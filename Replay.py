@@ -3,199 +3,140 @@ import numpy as np
 from Model_LSTM import *
 from Trace_Dataset import Dataset
 import time
+from TraceStat import TraceStat
 
-device = torch.device('cpu')
+device = torch.device('cuda:1' if torch.cuda.is_available() else 'cpu')
+torch.cuda.set_device(device)
+
 torch.manual_seed(0)
 np.random.seed(0)
-
 
 # global variables
 time_infer = 0
 time_decode = 0
 
-data_path = '/data/sunjw/LCSR/CG-D-128/'
+data_path = '/data/sunjw/LCSR/MG-D-64/'
 flag_replay = False
 flag_profile = True
 
-def predict(dataset, dataset_np, index, model, state_h, state_c):
-    x = torch.tensor([[dataset_np[index]]], dtype=torch.float)
-    if rank==0 and flag_profile:
+
+def predict(dataset, input_data , model, state_h, state_c):
+    # x = torch.tensor(dataset_np, dtype=torch.float)
+    if flag_profile:
         begin = time.perf_counter_ns()
-    y_pred, (state_h, state_c) = model(x, (state_h.detach(), state_c.detach()))
-    if rank==0 and flag_profile:
+    y_pred, (state_h, state_c) = model(input_data, (state_h.detach(), state_c.detach()))
+    if flag_profile:
         end = time.perf_counter_ns()
         global time_infer
-        time_infer+=end-begin
+        time_infer += end - begin
 
     # state_h = state_h.detach()
     # state_c = state_c.detach()
 
-    last_event_logits = y_pred[0][0]
-    if rank==0 and flag_profile:
+    # last_event_logits = y_pred[:, :, :]
+    if flag_profile:
         begin = time.perf_counter_ns()
-    event_input, event_raw = dataset.onehot2global(last_event_logits.detach().numpy(), softmax=False, shield=True)
-    if rank==0 and flag_profile:
+    input_data = dataset.onehot2global_gpu(y_pred, input_data)
+    if flag_profile:
         end = time.perf_counter_ns()
         global time_decode
-        time_decode+=end-begin
+        time_decode += end - begin
 
-    dataset_np[index] = np.array(event_input)
-    return event_raw, state_h, state_c
-
-
-class Replayer:
-    def __init__(self, init_buf_size=1024):
-        self.send_buf = np.zeros(init_buf_size, dtype=np.byte)
-        self.recv_buf = np.zeros(init_buf_size, dtype=np.byte)
-        self.max_send_size = init_buf_size
-        self.max_recv_size = init_buf_size
-
-    def check_send_buf(self, send_size):
-        if send_size > self.max_send_size:
-            # print('rank=%d, increase send_buf from %d to %d'%(rank, self.max_send_size, send_size))
-            self.max_send_size = send_size
-            self.send_buf = np.zeros(self.max_send_size, dtype=np.byte)
-
-    def check_recv_buf(self, recv_size):
-        if recv_size > self.max_recv_size:
-            # print('rank=%d, increase recv_buf from %d to %d' % (rank, self.max_recv_size, recv_size))
-            self.max_recv_size = recv_size
-            self.recv_buf = np.zeros(self.max_recv_size, dtype=np.byte)
-
-    def replay(self, event):
-        wait_time = event['Blank'] / 1000000.0
-        if wait_time < 0.0:
-            wait_time = 0
-        mpi_func = event['function']
-        if mpi_func == 'MPI_Sendrecv':
-            if rank == int(event['source']) or rank == int(event['dest']):
-                # if source == dest, do nothing
-                if int(event['source']) != int(event['dest']):
-                    # sometimes send_size != recv_size in prediction
-                    data_size = int(event['count'] * event['datatype']),
-
-                    # print('rank=%d, send_size=%d, recv_size=%d, replaying predicted %s' % (
-                    #     rank, data_size, data_size,
-                    #     dataset.get_event_str(event.values())))
-
-                    if rank == int(event['source']):
-                        self.check_send_buf(data_size)
-                        comm.Send([self.send_buf, data_size, MPI.BYTE], int(event['dest']))
-                    if rank == int(event['dest']):
-                        self.check_recv_buf(data_size)
-                        comm.Recv([self.recv_buf, data_size, MPI.BYTE], int(event['source']))
-                        # comm.Sendrecv(sendbuf=send_buf, dest=int(event['dest']), recvbuf=recv_buf, source=int(event['source']),
-                        #               sendtag=0, recvtag=0)
-                time.sleep(wait_time)
-        elif mpi_func == 'MPI_Reduce':
-            data_size = int(event['count'] * event['datatype'])
-            self.check_send_buf(data_size)
-            self.check_recv_buf(data_size)
-            comm.Reduce(sendbuf=[self.send_buf, data_size, MPI.BYTE], recvbuf=[self.recv_buf, data_size, MPI.BYTE],
-                           op=MPI.MAX, root=int(event['root']))  # op doesn't matter so much
-            time.sleep(wait_time)
-        elif mpi_func == 'MPI_Allreduce':
-            data_size = int(event['count'] * event['datatype'])
-            self.check_send_buf(data_size)
-            self.check_recv_buf(data_size)
-            comm.Allreduce(sendbuf=[self.send_buf, data_size, MPI.BYTE], recvbuf=[self.recv_buf, data_size, MPI.BYTE],
-                           op=MPI.MAX)  # op doesn't matter so much
-            time.sleep(wait_time)
-        elif mpi_func == 'MPI_Bcast':
-            data_size = int(event['count'] * event['datatype'])
-            self.check_send_buf(data_size)
-            comm.Bcast(buf=[self.send_buf, data_size, MPI.BYTE], root=int(event['root']))
-            time.sleep(wait_time)
-        elif mpi_func == 'MPI_Barrier':
-            comm.Barrier()
-            time.sleep(wait_time)
-        else:
-            print('error! unexpected MPI function %s' % mpi_func)
+    # dataset_np = event_input
+    return input_data, state_h, state_c
 
 
 dataset = Dataset()
-dataset.load_events_eval(data_path+'partial_dataset.csv', data_path+'dataset.info')
-dataset_np = dataset.events.to_numpy(copy=True)
+dataset.deserialize(data_path + 'dataset.info')
+input_data = torch.tensor(dataset.initial_data.reshape(dataset.n_procs, 1, dataset.n_feature_fields),
+                          dtype=torch.float).to(device)
+dataset.prepare4decode_gpu(device)
 
-model = Model(dataset.n_feature_fields, dataset.n_categorical_features + 1).to(device)
-state_dict = torch.load(data_path+'trace.model')
+model = Model(dataset.n_feature_fields, dataset.n_features, dataset.n_numerical_features).to(device)
+state_dict = torch.load(data_path + 'trace.model')
 model.load_state_dict(state_dict)
 model.eval()
-state_h, state_c = model.init_state(1)
 
-replayer = Replayer()
-comm = MPI.COMM_WORLD
-rank = comm.Get_rank()
+# (state_h, state_c) = dataset.initial_state_gpu
 
-MAX_STEPS = dataset.n_events - dataset.sq_length
+state_h, state_c = model.init_state(dataset.n_procs)
+state_h = state_h.to(device)
+state_c = state_c.to(device)
 
-if rank == 0:
-    print('replay starts')
+MAX_STEPS = int(np.max(dataset.n_events))
+
+print('%d batches in total' % MAX_STEPS)
 
 prediction = []
-
-
-t_begin = MPI.Wtime()
-comm.Barrier()
-# events of number sq_length are given
-for i in range(dataset.sq_length):
-    # warm up
-    _, state_h, state_c = predict(dataset, dataset_np, i, model, state_h, state_c)
-
-    event_raw = dataset.global2raw(dataset_np[i])
-    if rank == 0:
-        prediction.append(dataset.get_event_str(event_raw))
-    # print('rank=%d replaying given %s' % (rank, dataset.get_event_str(event_raw)))
-    if rank == 0:
-        print('replayed %d given events' % i)
-
-    if flag_replay:
-        replayer.replay(dict(zip(dataset.col_names, event_raw)))
-    # comm.Barrier()
 
 time_prediction = 0
 time_replay = 0
 begin = 0
 end = 0
+
+# event_input = torch.zeros((dataset.n_procs, 1, dataset.n_feature_fields)).to(device)
+
+t_begin = time.perf_counter_ns()
 # generate remainder events
 for i in range(0, MAX_STEPS):
-    if rank == 0:
-        begin = time.perf_counter_ns()
+    begin = time.perf_counter_ns()
     # state_h, state_c = model.init_state(1)
-    event_raw, state_h, state_c = predict(dataset, dataset_np, 0, model, state_h, state_c)
-    if rank == 0:
-        end = time.perf_counter_ns()
-        time_prediction+=end -begin
-    if rank == 0:
-        prediction.append(dataset.get_event_str(event_raw))
+    input_data , state_h, state_c = predict(dataset, input_data, model, state_h, state_c)
+
+    end = time.perf_counter_ns()
+    time_prediction += end - begin
+
+    prediction.append(input_data.cpu().detach().numpy())
     # print('rank=%d replaying predicted %s' % (rank, dataset.get_event_str(event_raw)))
-    if rank == 0:
-        begin = time.perf_counter_ns()
 
-    if flag_replay:
-        replayer.replay(dict(zip(dataset.col_names, event_raw)))
+    if i % 2000 == 0:
+        print('predicted %d batches of events' % i)
+        print('Average time for predicting a batch of events: %.1fus' % (time_prediction / (i + 1) / 1000.0))
+        print('Average time for inference: %.1fus' % (time_infer / (i + 1) / 1000.0))
+        print('Average time for decoding: %.1fus' % (time_decode / (i + 1) / 1000.0))
 
-    if rank == 0:
-        end = time.perf_counter_ns()
-        time_replay+=end -begin
-    if rank == 0:
-        if i % 1000 == 0:
-            print('replayed %d predicted events' % i)
-            print('Average time for predicting an event: %.1fus' % (time_prediction / (i+1)/1000.0))
-            print('Average time for replaying an event: %.1fus' % (time_replay / (i+1)/1000.0))
-            print('Average time for inference: %.1fus' % (time_infer / (i + 1)/1000.0))
-            print('Average time for decoding: %.1fus' % (time_decode / (i + 1)/1000.0))
-    # comm.Barrier()
+t_end = time.perf_counter_ns()
 
-t_end = MPI.Wtime()
-if rank == 0:
-    print('Total time cost for %d events: %fs' % (MAX_STEPS+dataset.sq_length, t_end - t_begin))
-    print('Average time for predicting a event: %.1fus'%(time_prediction/MAX_STEPS/1000.0))
-    print('Average time for replaying a event: %.1fus'%(time_replay/MAX_STEPS/1000.0))
+print(
+    'Total time cost for %d batches of events: %fs' % (MAX_STEPS , (t_end - t_begin) / 1000000000.0))
+print('Average time for predicting a batch of events: %.1fus' % (time_prediction / MAX_STEPS / 1000.0))
+
+# get predicted trace statistics
+t_begin = time.perf_counter_ns()
+
+trace_stats = TraceStat(dataset.n_procs, dataset.n_events)
+file = open(data_path + 'prediction.csv', 'w')
 
 
-if rank == 0:
-    file = open(data_path+'prediction.csv', 'w')
-    for event in prediction:
-        file.write(event+'\n')
-    file.close()
+
+
+for i in range(dataset.n_procs):
+    print('Writing trace %d, %d events' % (i, dataset.n_events[i]))
+    time_global2raw = 0
+    time_write = 0
+    for event_batch in prediction:
+        if not trace_stats.is_done(i):
+            if flag_profile:
+                begin = time.perf_counter_ns()
+            event = dataset.global2raw(event_batch[i, 0, :])
+            if flag_profile:
+                end = time.perf_counter_ns()
+                time_global2raw += end - begin
+            trace_stats.update(event)
+            if flag_profile:
+                begin = time.perf_counter_ns()
+            file.write(dataset.get_event_str(event) + '\n')
+            if flag_profile:
+                end = time.perf_counter_ns()
+                time_write += end - begin
+        else:
+            break
+    print('average time for decoding an event %fms' %(time_global2raw/dataset.n_events[i]/1000.0))
+    print('average time for writing an event %fms' % (time_write /dataset.n_events[i]/1000.0))
+file.close()
+trace_stats.save(data_path + 'prediction.stat')
+
+t_end = time.perf_counter_ns()
+print('Total time cost for predicted trace statistics: %fs' % ((t_end - t_begin) / 1000000000.0))
+
+trace_stats.visualize()

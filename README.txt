@@ -10,13 +10,13 @@ dwarfcode 用于进程间合并
     trace2symbol 去掉一些多余信息
     order 将事件重新排序
     combine 进程间trace合并
-Train.py 数据预处理（删除无用列，将每个feature field处理为global index for embedding table和one-hot两种形式）、训练和测试
+Train.py 数据预处理（将每个categorical feature field处理为global index for embedding table, numerical feature归一化）、训练和测试
 Replay.py 回放trace
-Match.py 群集通信只保留一行，p2p通信将Send转换为Sendrecv，删除Recv/Irecv
-Transform.py 将多个MPI函数数据格式合并
+Combine.py 将多个.order文件进行整理和合并
 MPI_define.py 定义MPI相关的信息
 Model_LSTM.py LSTM model 
 Trace_Dataset.py Dataset class for processing trace data
+TraceStat.py 记录trace中的统计信息，包括进程间数据收发量、computation time和communication time等
 
 
 简明步骤
@@ -26,8 +26,7 @@ Trace_Dataset.py Dataset class for processing trace data
 4. 运行目标应用，生成[0:np].trace一共np个trace文件，放入trace_data
 5. 运行trace2symbol 0.trace 0.symbol np，生成[0:np].symbol
 6. 运行order 0.symbol 0.order np，生成[0:np].order
-7. 运行combine 0.order 0.combine，生成0.combine
-8. 运行Transform.py，生成combine.csv
-9. 运行Match.py，生成match.csv
-10. 运行Train.py
-11. 运行mpirun -np np python Replay.py
+7. 运行Combine.py，生成train_dataset.csv
+8. 运行Train.py
+9. 运行Replay.py
+

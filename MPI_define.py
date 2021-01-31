@@ -49,24 +49,23 @@ pt2ptList = [
     "MPI_Waitall"
 ]
 
+send_list = [
+    "MPI_Send",
+    "MPI_Isend"
+]
+
+recv_list = [
+    "MPI_Recv",
+    "MPI_Irecv"
+]
 
 function_para_dict = {
     'MPI_Reduce' : ['file', 'function', 'count', 'datatype',  'root', 'Blank'],
     'MPI_Allreduce' : ['file', 'function', 'count', 'datatype', 'Blank'],
-    'MPI_Sendrecv': ['file', 'function', 'source', 'dest', 'count', 'datatype', 'Blank'],
+    # 'MPI_Sendrecv': ['file', 'function', 'source', 'dest', 'count', 'datatype', 'Blank'],
     'MPI_Send':['file', 'function', 'dest', 'count', 'datatype', 'Blank'],
     'MPI_Barrier' : ['file', 'function', 'Blank'],
     'MPI_Bcast' : ['file', 'function','count','datatype','root', 'Blank'],
-}
-
-para_reduce_dict = {
-    'function':0,
-    'count':1,
-    'datatype':2,
-    'source':3,
-    'dest': 4,
-    'root':5,
-    'Blank':6
 }
 
 event_para_dict = {
@@ -74,10 +73,11 @@ event_para_dict = {
     'function': 1,
     'count': 2,
     'datatype': 3,
-    'source': 4,
-    'dest': 5,
-    'root': 6,
-    'Blank': 7
+    'target': 4,
+    'tag':5,
+    'D':6,
+    'Blank': 7,
+    'SUM':8
 }
 
 # event_para_dict = {
