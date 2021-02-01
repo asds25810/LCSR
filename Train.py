@@ -12,7 +12,7 @@ from TraceStat import TraceStat
 
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 torch.cuda.set_device(device)
-data_path = '/data/sunjw/LCSR/MG-D-64/'
+data_path = '/data/sunjw/LCSR/LULESH-64/'
 
 
 class DataPrefetcher():
@@ -56,7 +56,7 @@ def train(dataset, model, args):
     optimizer = optim.AdamW(model.parameters(), lr=0.01)
     print('%d parameter group(s)' % len(list(model.parameters())))
     print('%d parameter group(s)' % len(optimizer.param_groups))
-    scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=[5, 8], gamma=0.5)
+    scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=[2, 3], gamma=0.5)
 
     for epoch in range(args.max_epochs):
         prefetcher = DataPrefetcher(dataloader)
@@ -79,7 +79,7 @@ def train(dataset, model, args):
 
             # loss for numerical feature field
             loss_num = criterion_num(y_pred[:, :, -dataset.n_numerical_features:],
-                                     y[:, :, -dataset.n_numerical_features:]) * 1.0
+                                     y[:, :, -dataset.n_numerical_features:]) * 2.0
             #
             # loss_num = torch.mean(torch.log(torch.cosh(
             #     y_pred[:, -1, -dataset.n_numerical_features:] - y[:, -1, -dataset.n_numerical_features:]))) * 1.0
@@ -141,7 +141,7 @@ def train(dataset, model, args):
             loss.backward()
             optimizer.step()
 
-            if batch_id % 20 == 0:
+            if batch_id % 50 == 0:
                 print({'epoch': epoch, 'batch': batch_id, 'lr': optimizer.param_groups[0]['lr'],
                        'loss_cat': loss_cat.item(),
                        'loss_num': loss_num.item(),
@@ -258,8 +258,8 @@ def validate(dataset, model, n_steps):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--max-epochs', type=int, default=10)
-    parser.add_argument('--batch-size', type=int, default=256)
+    parser.add_argument('--max-epochs', type=int, default=1)
+    parser.add_argument('--batch-size', type=int, default=512)
     parser.add_argument('--sequence-length', type=int, default=256)
     parser.add_argument('--data-dir', type=str, default='')
     args = parser.parse_args()

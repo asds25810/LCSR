@@ -5,7 +5,7 @@ from torch import nn
 class Model(nn.Module):
     def __init__(self, n_feature_fields, n_features, n_numeric, type=torch.float):
         super(Model, self).__init__()
-        self.lstm_size = 24
+        self.lstm_size = 32
         self.embedding_dim = 8
         self.num_layers = 2
         self.type = type

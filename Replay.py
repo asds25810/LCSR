@@ -5,7 +5,7 @@ from Trace_Dataset import Dataset
 import time
 from TraceStat import TraceStat
 
-device = torch.device('cuda:1' if torch.cuda.is_available() else 'cpu')
+device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 torch.cuda.set_device(device)
 
 torch.manual_seed(0)
@@ -15,7 +15,7 @@ np.random.seed(0)
 time_infer = 0
 time_decode = 0
 
-data_path = '/data/sunjw/LCSR/MG-D-64/'
+data_path = '/data/sunjw/LCSR/LULESH-64/'
 flag_replay = False
 flag_profile = True
 
@@ -24,14 +24,14 @@ def predict(dataset, input_data , model, state_h, state_c):
     # x = torch.tensor(dataset_np, dtype=torch.float)
     if flag_profile:
         begin = time.perf_counter_ns()
-    y_pred, (state_h, state_c) = model(input_data, (state_h.detach(), state_c.detach()))
+    y_pred, (state_h, state_c) = model(input_data, (state_h, state_c))
     if flag_profile:
         end = time.perf_counter_ns()
         global time_infer
         time_infer += end - begin
 
-    # state_h = state_h.detach()
-    # state_c = state_c.detach()
+    state_h = state_h.detach()
+    state_c = state_c.detach()
 
     # last_event_logits = y_pred[:, :, :]
     if flag_profile:
@@ -48,6 +48,7 @@ def predict(dataset, input_data , model, state_h, state_c):
 
 dataset = Dataset()
 dataset.deserialize(data_path + 'dataset.info')
+# input_data = dataset.initial_data.reshape(dataset.n_procs, 1, dataset.n_feature_fields)
 input_data = torch.tensor(dataset.initial_data.reshape(dataset.n_procs, 1, dataset.n_feature_fields),
                           dtype=torch.float).to(device)
 dataset.prepare4decode_gpu(device)
@@ -81,12 +82,12 @@ t_begin = time.perf_counter_ns()
 for i in range(0, MAX_STEPS):
     begin = time.perf_counter_ns()
     # state_h, state_c = model.init_state(1)
-    input_data , state_h, state_c = predict(dataset, input_data, model, state_h, state_c)
-
+    pred , state_h, state_c = predict(dataset, input_data, model, state_h, state_c)
+    input_data = pred.detach()
     end = time.perf_counter_ns()
     time_prediction += end - begin
 
-    prediction.append(input_data.cpu().detach().numpy())
+    prediction.append(input_data.cpu().numpy())
     # print('rank=%d replaying predicted %s' % (rank, dataset.get_event_str(event_raw)))
 
     if i % 2000 == 0:
@@ -109,7 +110,7 @@ file = open(data_path + 'prediction.csv', 'w')
 
 
 
-
+# need acceleration
 for i in range(dataset.n_procs):
     print('Writing trace %d, %d events' % (i, dataset.n_events[i]))
     time_global2raw = 0
@@ -131,8 +132,8 @@ for i in range(dataset.n_procs):
                 time_write += end - begin
         else:
             break
-    print('average time for decoding an event %fms' %(time_global2raw/dataset.n_events[i]/1000.0))
-    print('average time for writing an event %fms' % (time_write /dataset.n_events[i]/1000.0))
+    print('average time for decoding an event %fus' %(time_global2raw/dataset.n_events[i]/1000.0))
+    print('average time for writing an event %fus' % (time_write /dataset.n_events[i]/1000.0))
 file.close()
 trace_stats.save(data_path + 'prediction.stat')
 

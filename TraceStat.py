@@ -64,9 +64,14 @@ class TraceStat:
             comm.append(self.stats[i].comm_time/1000000.0)
             time.append(self.stats[i].time/1000000.0)
             sum.append(self.stats[i].comp_time/1000000.0+self.stats[i].comm_time/1000000.0)
-        print('mean %fs %fs %fs %fs'%(np.mean(comp).item(), np.mean(comm).item(), np.mean(time).item(), np.mean(sum).item()))
-        print('min %fs %fs %fs %fs' % (np.min(comp).item(), np.min(comm).item(), np.min(time).item(), np.min(sum).item()))
-        print('max %fs %fs %fs %fs'% (np.max(comp).item(), np.max(comm).item(), np.max(time).item(), np.max(sum).item()))
+        print('median %fs %fs %fs %fs' % (
+            np.median(comp).item(), np.median(comm).item(), np.median(time).item(), np.median(sum).item()))
+        print('mean %fs %fs %fs %fs'%(
+            np.mean(comp).item(), np.mean(comm).item(), np.mean(time).item(), np.mean(sum).item()))
+        print('min %fs %fs %fs %fs' % (
+            np.min(comp).item(), np.min(comm).item(), np.min(time).item(), np.min(sum).item()))
+        print('max %fs %fs %fs %fs'% (
+            np.max(comp).item(), np.max(comm).item(), np.max(time).item(), np.max(sum).item()))
 
     def visualize(self):
         matrix_send = np.zeros(shape=(self.n_procs, self.n_procs))
