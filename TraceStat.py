@@ -19,10 +19,11 @@ class Stat:
 
 
 class TraceStat:
-    def __init__(self, n_procs, max_events=None):
+    def __init__(self, n_procs, scale_factor=1, max_events=None):
         self.stats = [Stat(n_procs) for _ in range(n_procs)]
         self.n_procs = n_procs
         self.max_events = max_events
+        self.scale_factor = scale_factor
         if max_events is None:
             self.max_events = [0] * n_procs
 
@@ -60,10 +61,10 @@ class TraceStat:
             # print('rank %d, comp %fs, comm %fs, time %fs, sum %fs' % (
             # i, self.stats[i].comp_time/1000000.0, self.stats[i].comm_time/1000000.0,
             # self.stats[i].time/1000000.0, self.stats[i].comp_time/1000000.0 + self.stats[i].comm_time/1000000.0))
-            comp.append(self.stats[i].comp_time/1000000.0)
-            comm.append(self.stats[i].comm_time/1000000.0)
-            time.append(self.stats[i].time/1000000.0)
-            sum.append(self.stats[i].comp_time/1000000.0+self.stats[i].comm_time/1000000.0)
+            comp.append(self.stats[i].comp_time/1000000.0 * self.scale_factor)
+            comm.append(self.stats[i].comm_time/1000000.0 * self.scale_factor)
+            time.append(self.stats[i].time/1000000.0 * self.scale_factor)
+            sum.append((self.stats[i].comp_time/1000000.0+self.stats[i].comm_time/1000000.0) * self.scale_factor)
         print('median %fs %fs %fs %fs' % (
             np.median(comp).item(), np.median(comm).item(), np.median(time).item(), np.median(sum).item()))
         print('mean %fs %fs %fs %fs'%(
@@ -79,10 +80,10 @@ class TraceStat:
         for i in range(self.n_procs):
             matrix_send[i, :] = np.array(self.stats[i].send_bytes)
             matrix_recv[i, :] = np.array(self.stats[i].recv_bytes)
-        matrix = matrix_recv  # np.maximum(matrix_send, matrix_recv)
+        matrix = matrix_recv * self.scale_factor # np.maximum(matrix_send, matrix_recv)
         plt.figure(figsize=(8, 6))
         # sns.heatmap(matrix, cmap="binary", linecolor='Black', linewidths=0.5, norm=LogNorm(vmin=1000))
-        sns.heatmap(matrix, cmap="binary", linecolor='Black', norm=LogNorm(vmin=1))
+        sns.heatmap(matrix, cmap="binary", linecolor='Black', norm=LogNorm(vmin=100))
         plt.xlabel("Sender Rank")
         plt.ylabel("Receiver Rank")
         plt.ylim(0, self.n_procs)
@@ -94,6 +95,7 @@ class TraceStat:
         trace_stat = {
             'stats': self.stats,
             'n_procs': self.n_procs,
+            'scale_factor': self.scale_factor,
             'max_events': self.max_events
         }
         with open(file_path, 'wb') as file:
@@ -104,7 +106,8 @@ class TraceStat:
             trace_stat = pickle.load(file)
         self.stats = trace_stat['stats']
         self.n_procs = trace_stat['n_procs']
+        self.scale_factor = trace_stat['scale_factor']
         self.max_events = trace_stat['max_events']
 
     def is_done(self, proc_id):
-        return self.max_events[proc_id] <= self.stats[proc_id].n_events
+        return self.max_events[proc_id] / self.scale_factor <= self.stats[proc_id].n_events

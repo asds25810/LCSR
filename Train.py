@@ -12,7 +12,7 @@ from TraceStat import TraceStat
 
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 torch.cuda.set_device(device)
-data_path = '/data/sunjw/LCSR/LULESH-64/'
+data_path = '/data/sunjw/LCSR/MG-D-64/'
 
 
 class DataPrefetcher():
@@ -258,8 +258,8 @@ def validate(dataset, model, n_steps):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--max-epochs', type=int, default=1)
-    parser.add_argument('--batch-size', type=int, default=512)
+    parser.add_argument('--max-epochs', type=int, default=5)
+    parser.add_argument('--batch-size', type=int, default=256)
     parser.add_argument('--sequence-length', type=int, default=256)
     parser.add_argument('--data-dir', type=str, default='')
     args = parser.parse_args()

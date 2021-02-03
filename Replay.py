@@ -15,7 +15,7 @@ np.random.seed(0)
 time_infer = 0
 time_decode = 0
 
-data_path = '/data/sunjw/LCSR/LULESH-64/'
+data_path = '/data/sunjw/LCSR/MG-D-64/'
 flag_replay = False
 flag_profile = True
 
@@ -64,11 +64,12 @@ state_h, state_c = model.init_state(dataset.n_procs)
 state_h = state_h.to(device)
 state_c = state_c.to(device)
 
-MAX_STEPS = int(np.max(dataset.n_events))
+scale_factor = 3
 
-print('%d batches in total' % MAX_STEPS)
+MAX_STEPS = int(np.max(dataset.n_events)/scale_factor)
 
-prediction = []
+print('%d batches in total' % np.max(dataset.n_events))
+print('predict %d batches to approximate' % MAX_STEPS)
 
 time_prediction = 0
 time_replay = 0
@@ -76,7 +77,7 @@ begin = 0
 end = 0
 
 # event_input = torch.zeros((dataset.n_procs, 1, dataset.n_feature_fields)).to(device)
-
+prediction = np.zeros(shape=(MAX_STEPS, dataset.n_procs, dataset.n_feature_fields))
 t_begin = time.perf_counter_ns()
 # generate remainder events
 for i in range(0, MAX_STEPS):
@@ -87,7 +88,7 @@ for i in range(0, MAX_STEPS):
     end = time.perf_counter_ns()
     time_prediction += end - begin
 
-    prediction.append(input_data.cpu().numpy())
+    prediction[i, :, :] = input_data.cpu().numpy().reshape(dataset.n_procs, dataset.n_feature_fields)
     # print('rank=%d replaying predicted %s' % (rank, dataset.get_event_str(event_raw)))
 
     if i % 2000 == 0:
@@ -105,7 +106,7 @@ print('Average time for predicting a batch of events: %.1fus' % (time_prediction
 # get predicted trace statistics
 t_begin = time.perf_counter_ns()
 
-trace_stats = TraceStat(dataset.n_procs, dataset.n_events)
+trace_stats = TraceStat(dataset.n_procs, scale_factor, dataset.n_events)
 file = open(data_path + 'prediction.csv', 'w')
 
 
@@ -116,10 +117,10 @@ for i in range(dataset.n_procs):
     time_global2raw = 0
     time_write = 0
     for event_batch in prediction:
-        if not trace_stats.is_done(i):
+        if trace_stats.stats[i].n_events < trace_stats.max_events[i] / trace_stats.scale_factor:
             if flag_profile:
                 begin = time.perf_counter_ns()
-            event = dataset.global2raw(event_batch[i, 0, :])
+            event = dataset.global2raw(event_batch[i, :])
             if flag_profile:
                 end = time.perf_counter_ns()
                 time_global2raw += end - begin

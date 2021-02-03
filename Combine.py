@@ -21,7 +21,7 @@ def get_offset(source, dest, nprocs):
 
 
 nprocs = 64
-data_path = '/data/sunjw/LCSR/LULESH-64/'
+data_path = '/data/sunjw/LCSR/MG-D-64/'
 
 trace_stat = TraceStat(nprocs)
 
