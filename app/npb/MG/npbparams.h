@@ -1,32 +1,24 @@
-c NPROCS = 8 CLASS = S
+c NPROCS = 8 CLASS = D
 c  
 c  
 c  This file is generated automatically by the setparams utility.
 c  It sets the number of processors and the class of the NPB
 c  in this directory. Do not modify it by hand.
 c  
-
-c number of nodes for which this version is compiled
-        integer nnodes_compiled, nnodes_xdim
-        parameter (nnodes_compiled=8, nnodes_xdim=4)
-
-c full problem size
-        integer isiz01, isiz02, isiz03
-        parameter (isiz01=12, isiz02=12, isiz03=12)
-
-c sub-domain array size
-        integer isiz1, isiz2, isiz3
-        parameter (isiz1=3, isiz2=6, isiz3=isiz03)
-
-c number of iterations and how often to print the norm
-        integer itmax_default, inorm_default
-        parameter (itmax_default=50, inorm_default=50)
-        double precision dt_default
-        parameter (dt_default = 0.5d0)
+        integer nprocs_compiled
+        parameter (nprocs_compiled = 8)
+        integer nx_default, ny_default, nz_default
+        parameter (nx_default=1024, ny_default=1024, nz_default=1024)
+        integer nit_default, lm, lt_default
+        parameter (nit_default=50, lm = 9, lt_default=10)
+        integer debug_default
+        parameter (debug_default=0)
+        integer ndim1, ndim2, ndim3
+        parameter (ndim1 = 9, ndim2 = 9, ndim3 = 9)
         logical  convertdouble
         parameter (convertdouble = .false.)
         character*11 compiletime
-        parameter (compiletime='07 Dec 2020')
+        parameter (compiletime='30 Jan 2021')
         character*5 npbversion
         parameter (npbversion='3.3.1')
         character*6 cs1

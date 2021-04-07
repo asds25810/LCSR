@@ -76,8 +76,7 @@ event_para_dict = {
     'target': 4,
     'tag':5,
     'D':6,
-    'Blank': 7,
-    'SUM':8
+    'Blank': 7
 }
 
 # event_para_dict = {

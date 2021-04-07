@@ -5,7 +5,7 @@ from Trace_Dataset import Dataset
 import time
 from TraceStat import TraceStat
 
-device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+device = torch.device('cuda:6' if torch.cuda.is_available() else 'cpu')
 torch.cuda.set_device(device)
 
 torch.manual_seed(0)
@@ -15,7 +15,7 @@ np.random.seed(0)
 time_infer = 0
 time_decode = 0
 
-data_path = '/data/sunjw/LCSR/MG-D-64/'
+data_path = '/data/sunjw/LCSR/LULESH-512/'
 flag_replay = False
 flag_profile = True
 
@@ -53,7 +53,7 @@ input_data = torch.tensor(dataset.initial_data.reshape(dataset.n_procs, 1, datas
                           dtype=torch.float).to(device)
 dataset.prepare4decode_gpu(device)
 
-model = Model(dataset.n_feature_fields, dataset.n_features, dataset.n_numerical_features).to(device)
+model = Model(dataset.n_feature_fields, dataset.n_features).to(device)
 state_dict = torch.load(data_path + 'trace.model')
 model.load_state_dict(state_dict)
 model.eval()
@@ -64,7 +64,7 @@ state_h, state_c = model.init_state(dataset.n_procs)
 state_h = state_h.to(device)
 state_c = state_c.to(device)
 
-scale_factor = 3
+scale_factor = 20
 
 MAX_STEPS = int(np.max(dataset.n_events)/scale_factor)
 
@@ -98,7 +98,7 @@ for i in range(0, MAX_STEPS):
         print('Average time for decoding: %.1fus' % (time_decode / (i + 1) / 1000.0))
 
 t_end = time.perf_counter_ns()
-
+t1 = t_end - t_begin
 print(
     'Total time cost for %d batches of events: %fs' % (MAX_STEPS , (t_end - t_begin) / 1000000000.0))
 print('Average time for predicting a batch of events: %.1fus' % (time_prediction / MAX_STEPS / 1000.0))
@@ -141,4 +141,6 @@ trace_stats.save(data_path + 'prediction.stat')
 t_end = time.perf_counter_ns()
 print('Total time cost for predicted trace statistics: %fs' % ((t_end - t_begin) / 1000000000.0))
 
-trace_stats.visualize()
+t2 = t_end - t_begin
+print('Total time cost for replay: %fs' % ((t1 + t2) / 1000000000.0))
+# trace_stats.visualize()

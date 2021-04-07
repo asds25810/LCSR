@@ -8,7 +8,6 @@ import math
 
 class Stat:
     def __init__(self, n_procs):
-        self.time = 0
         self.comp_time = 0
         self.comm_time = 0
         self.n_events = 0
@@ -29,9 +28,8 @@ class TraceStat:
 
     def update(self, event):
         proc_id = int(event[0])
-        comp_time = int(event[-2])
-        comm_time = int(event[-3])
-        time = int(event[-1])
+        comp_time = int(event[-1])
+        comm_time = int(event[-2])
         mpi_func = event[1]
 
         if mpi_func in send_list:
@@ -47,7 +45,6 @@ class TraceStat:
         else:
             pass
 
-        self.stats[proc_id].time += time
         self.stats[proc_id].comp_time += comp_time
         self.stats[proc_id].comm_time += comm_time
         self.stats[proc_id].n_events += 1
@@ -55,7 +52,6 @@ class TraceStat:
     def time(self):
         comp = []
         comm = []
-        time = []
         sum = []
         for i in range(self.n_procs):
             # print('rank %d, comp %fs, comm %fs, time %fs, sum %fs' % (
@@ -63,16 +59,12 @@ class TraceStat:
             # self.stats[i].time/1000000.0, self.stats[i].comp_time/1000000.0 + self.stats[i].comm_time/1000000.0))
             comp.append(self.stats[i].comp_time/1000000.0 * self.scale_factor)
             comm.append(self.stats[i].comm_time/1000000.0 * self.scale_factor)
-            time.append(self.stats[i].time/1000000.0 * self.scale_factor)
             sum.append((self.stats[i].comp_time/1000000.0+self.stats[i].comm_time/1000000.0) * self.scale_factor)
-        print('median %fs %fs %fs %fs' % (
-            np.median(comp).item(), np.median(comm).item(), np.median(time).item(), np.median(sum).item()))
-        print('mean %fs %fs %fs %fs'%(
-            np.mean(comp).item(), np.mean(comm).item(), np.mean(time).item(), np.mean(sum).item()))
-        print('min %fs %fs %fs %fs' % (
-            np.min(comp).item(), np.min(comm).item(), np.min(time).item(), np.min(sum).item()))
-        print('max %fs %fs %fs %fs'% (
-            np.max(comp).item(), np.max(comm).item(), np.max(time).item(), np.max(sum).item()))
+        print('median prediction of computation:%fs communication:%fs total:%fs' % (
+            np.median(comp).item(), np.median(comm).item(), np.median(sum).item()))
+        print('mean prediction of computation:%fs communication:%fs total:%fs'%(
+            np.mean(comp).item(), np.mean(comm).item(),np.mean(sum).item()))
+
 
     def visualize(self):
         matrix_send = np.zeros(shape=(self.n_procs, self.n_procs))
@@ -80,10 +72,9 @@ class TraceStat:
         for i in range(self.n_procs):
             matrix_send[i, :] = np.array(self.stats[i].send_bytes)
             matrix_recv[i, :] = np.array(self.stats[i].recv_bytes)
-        matrix = matrix_recv * self.scale_factor # np.maximum(matrix_send, matrix_recv)
+        matrix = matrix_send * self.scale_factor  # np.maximum(matrix_send, matrix_recv) * self.scale_factor
         plt.figure(figsize=(8, 6))
-        # sns.heatmap(matrix, cmap="binary", linecolor='Black', linewidths=0.5, norm=LogNorm(vmin=1000))
-        sns.heatmap(matrix, cmap="binary", linecolor='Black', norm=LogNorm(vmin=100))
+        sns.heatmap(matrix, cmap="coolwarm", linecolor='Black', norm=LogNorm(vmin=1000))
         plt.xlabel("Sender Rank")
         plt.ylabel("Receiver Rank")
         plt.ylim(0, self.n_procs)
@@ -106,7 +97,10 @@ class TraceStat:
             trace_stat = pickle.load(file)
         self.stats = trace_stat['stats']
         self.n_procs = trace_stat['n_procs']
-        self.scale_factor = trace_stat['scale_factor']
+        if'scale_factor' in trace_stat:
+            self.scale_factor = trace_stat['scale_factor']
+        else:
+            self.scale_factor = 1.0
         self.max_events = trace_stat['max_events']
 
     def is_done(self, proc_id):

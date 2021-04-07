@@ -9,27 +9,27 @@ para_dict = {
     'count': 2,
     'datatype': 3,
     'target': 4,
-    'tag':5,
-    'D':6,
+    'tag': 5,
+    'D': 6,
     'Blank': 7,
-    'SUM':8
 }
+
 
 def get_offset(source, dest, nprocs):
     offset = (dest + nprocs - source) % nprocs
     return offset
 
 
-nprocs = 64
-data_path = '/data/sunjw/LCSR/MG-D-64/'
+nprocs = 512
+data_path = '/data/sunjw/LCSR/LULESH-512/'
 
 trace_stat = TraceStat(nprocs)
 
-f_out = open(data_path+'train_dataset.csv','w',encoding='utf8', newline='')
+f_out = open(data_path + 'train_dataset.csv', 'w', encoding='utf8', newline='')
 csv_writer = csv.writer(f_out)
 
 for i in range(nprocs):
-    with open(data_path+str(i)+'.order', 'r') as f_in:
+    with open(data_path + str(i) + '.order', 'r') as f_in:
         print('Processing trace %d' % i)
         last_end = 0
         for line in f_in:
@@ -101,19 +101,16 @@ for i in range(nprocs):
             E = re.findall(r'E=\[ (.*?) \]', line)
             D = re.findall(r'D=\[ (.*?) \]', line)
             if D:
-                para_list[6] = D[0]
+                para_list[6] = str(int(int(D[0]) / 1))
 
             if E:
                 Blank = int(S[0]) - last_end
                 last_end = int(E[0])
-                para_list[7] = str(Blank)
-
-            para_list[8] = str(int(para_list[7])+int(para_list[6]))
+                para_list[7] = str(int(Blank / 1))
 
             csv_writer.writerow(para_list)
 
             trace_stat.update(para_list)
             trace_stat.max_events[i] += 1
 
-trace_stat.save(data_path+'train_data.stat')
-
+trace_stat.save(data_path + 'train_data.stat')
