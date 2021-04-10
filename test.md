@@ -36,7 +36,7 @@
 
 
 
-## 简明步骤  
+## Concise steps  
 
 1. Compile mpiP and dependent libraries to generate libmpiP.so.  
 
