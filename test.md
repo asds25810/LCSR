@@ -1,6 +1,6 @@
 # README
 
-app: target applications, including NPB CG and LU, and LULESH.  
+**app:** target applications, including NPB CG and LU, and LULESH.  
 
 ### mpiP-3.5: Used for trace generating  
 
