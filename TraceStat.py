@@ -54,15 +54,12 @@ class TraceStat:
         comm = []
         sum = []
         for i in range(self.n_procs):
-            # print('rank %d, comp %fs, comm %fs, time %fs, sum %fs' % (
-            # i, self.stats[i].comp_time/1000000.0, self.stats[i].comm_time/1000000.0,
-            # self.stats[i].time/1000000.0, self.stats[i].comp_time/1000000.0 + self.stats[i].comm_time/1000000.0))
             comp.append(self.stats[i].comp_time/1000000.0 * self.scale_factor)
             comm.append(self.stats[i].comm_time/1000000.0 * self.scale_factor)
             sum.append((self.stats[i].comp_time/1000000.0+self.stats[i].comm_time/1000000.0) * self.scale_factor)
-        print('median prediction of computation:%fs communication:%fs total:%fs' % (
+        print('median computation:%fs communication:%fs total:%fs' % (
             np.median(comp).item(), np.median(comm).item(), np.median(sum).item()))
-        print('mean prediction of computation:%fs communication:%fs total:%fs'%(
+        print('mean computation:%fs communication:%fs total:%fs'%(
             np.mean(comp).item(), np.mean(comm).item(),np.mean(sum).item()))
 
 
@@ -74,13 +71,13 @@ class TraceStat:
             matrix_recv[i, :] = np.array(self.stats[i].recv_bytes)
         matrix = matrix_send * self.scale_factor  # np.maximum(matrix_send, matrix_recv) * self.scale_factor
         plt.figure(figsize=(8, 6))
-        sns.heatmap(matrix, cmap="coolwarm", linecolor='Black', norm=LogNorm(vmin=1000))
+        sns.heatmap(matrix, cmap="binary", linecolor='Black', norm=LogNorm(vmin=1000))
         plt.xlabel("Sender Rank")
         plt.ylabel("Receiver Rank")
         plt.ylim(0, self.n_procs)
         plt.xlim(0, self.n_procs)
         plt.show()
-        # print(matrix)
+
 
     def save(self, file_path):
         trace_stat = {

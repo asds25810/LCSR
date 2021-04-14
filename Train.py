@@ -8,13 +8,15 @@ from Trace_Dataset import Dataset
 import matplotlib.pyplot as plt
 import math
 import time
-from TraceStat import TraceStat
 
-device = torch.device('cuda:6' if torch.cuda.is_available() else 'cpu')
+from torchvision.models import AlexNet
+from torchviz import make_dot
+
+device = torch.device('cuda:5' if torch.cuda.is_available() else 'cpu')
 torch.cuda.set_device(device)
 
 # data_path = '/data/sunjw/LCSR/LULESH-512/'
-data_path = '/data/sunjw/LCSR/MG-D-256/'
+data_path = '/data/sunjw/LCSR/CG-D-512/'
 
 class DataPrefetcher():
     def __init__(self, loader):
@@ -91,7 +93,7 @@ def train(dataset, model, args):
                 index = i+len(dataset.categorical_feature_fields)
                 loss_num = loss_num + criterion(y_pred[:, :, begin:end].transpose(1, 2), y[:, :, index].long())
             loss_cat = loss_cat / len(dataset.categorical_feature_fields)
-            loss_num = loss_num / dataset.n_feature_fields * 0.1  # a hyper-parameter, a trick
+            loss_num = loss_num / dataset.n_feature_fields * 0.05  # a hyper-parameter, a trick
             loss = loss_cat + loss_num
 
             state_h = state_h.detach()
@@ -144,7 +146,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--max-epochs', type=int, default=5)
     parser.add_argument('--batch-size', type=int, default=128)
-    parser.add_argument('--sequence-length', type=int, default=512)
+    parser.add_argument('--sequence-length', type=int, default=256)
     parser.add_argument('--data-dir', type=str, default='')
     args = parser.parse_args()
 
@@ -153,6 +155,9 @@ if __name__ == '__main__':
                               data_path + 'partial_dataset.csv')
 
     model = Model(dataset.n_feature_fields, dataset.n_features, torch.float).to(device)
+
+
+
     # model.half()
     pytorch_total_params = sum(p.numel() for p in model.parameters())
     print('%d parameters in total' % pytorch_total_params)

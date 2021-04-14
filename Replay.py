@@ -5,8 +5,9 @@ from Trace_Dataset import Dataset
 import time
 from TraceStat import TraceStat
 
-device = torch.device('cuda:6' if torch.cuda.is_available() else 'cpu')
-torch.cuda.set_device(device)
+# device = torch.device('cuda:5' if torch.cuda.is_available() else 'cpu')
+device = torch.device('cpu')
+# torch.cuda.set_device(device)
 
 torch.manual_seed(0)
 np.random.seed(0)
@@ -15,7 +16,7 @@ np.random.seed(0)
 time_infer = 0
 time_decode = 0
 
-data_path = '/data/sunjw/LCSR/LULESH-512/'
+data_path = '/data/sunjw/LCSR/CG-D-512/'
 flag_replay = False
 flag_profile = True
 

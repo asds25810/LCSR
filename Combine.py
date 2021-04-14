@@ -20,8 +20,8 @@ def get_offset(source, dest, nprocs):
     return offset
 
 
-nprocs = 512
-data_path = '/data/sunjw/LCSR/LULESH-512/'
+nprocs = 64
+data_path = '/data/sunjw/LCSR/CG-D-64/'
 
 trace_stat = TraceStat(nprocs)
 
@@ -101,12 +101,14 @@ for i in range(nprocs):
             E = re.findall(r'E=\[ (.*?) \]', line)
             D = re.findall(r'D=\[ (.*?) \]', line)
             if D:
-                para_list[6] = str(int(int(D[0]) / 1))
+                # para_list[6] =D[0]
+                para_list[6] = str(int(E[0]) - int(S[0]))
+
 
             if E:
                 Blank = int(S[0]) - last_end
-                last_end = int(E[0])
-                para_list[7] = str(int(Blank / 1))
+                last_end = int(E[0]) + int(D[0])
+                para_list[7] = str(Blank)
 
             csv_writer.writerow(para_list)
 
