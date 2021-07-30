@@ -74,7 +74,7 @@ class Dataset(torch.utils.data.Dataset):
         self.categorical_feature_fields = ['file', 'function', 'count', 'datatype', 'target', 'tag']
         self.numerical_feature_fields = ['D', 'Blank']
         for field in self.numerical_feature_fields:
-            km = KMeans(n_clusters=30, n_init=1)
+            km = KMeans(n_clusters=20, n_init=1)
             train_df[field] = km.fit_predict(train_df[field].to_numpy(dtype=np.float).reshape(-1, 1))
             self.index2value[field] = km.cluster_centers_
 

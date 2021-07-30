@@ -3,7 +3,7 @@ import torch
 import numpy as np
 from torch import nn, optim
 from torch.utils.data import DataLoader
-from Model_LSTM import Model
+from Model_Transformer import Model
 from Trace_Dataset import Dataset
 import matplotlib.pyplot as plt
 import math
@@ -16,7 +16,8 @@ device = torch.device('cuda:5' if torch.cuda.is_available() else 'cpu')
 torch.cuda.set_device(device)
 
 # data_path = '/data/sunjw/LCSR/LULESH-512/'
-data_path = '/data/sunjw/LCSR/CG-D-64/'
+data_path = '/data/sunjw/LCSR/CG-MG-128/'
+
 
 class DataPrefetcher():
     def __init__(self, loader):
@@ -55,30 +56,24 @@ def train(dataset, model, args):
 
     criterion = nn.CrossEntropyLoss()
 
-    # optimizer = optim.Adam(model.parameters(), lr=0.01)
-    optimizer = optim.AdamW(model.parameters(), lr=0.01)
+    optimizer = optim.AdamW(model.parameters(), lr=0.0005, weight_decay=0.0)
+    # optimizer = optim.Adam(model.parameters(), lr=0.0001, weight_decay=0.0)
     print('%d parameter group(s)' % len(list(model.parameters())))
     print('%d parameter group(s)' % len(optimizer.param_groups))
 
     n_iter = 0
+    src_mask = model.generate_square_subsequent_mask(dataset.sq_length).to(device)
     for epoch in range(args.max_epochs):
         prefetcher = DataPrefetcher(dataloader)
         batch = prefetcher.next()
         batch_id = 0
 
-        # state_h, state_c = model.init_state(args.batch_size)
-        # state_h = state_h.to(device)
-        # state_c = state_c.to(device)
-
         while batch is not None:
-            state_h, state_c = model.init_state(args.batch_size)
-            state_h = state_h.to(device)
-            state_c = state_c.to(device)
             optimizer.zero_grad()
             (x, y) = batch
             # x = x.to(device)
             # y = y.to(device)
-            y_pred, (state_h, state_c) = model(x, (state_h, state_c))
+            y_pred = model(x, src_mask).transpose(0, 1)
 
             # loss for categorical feature field
             loss_cat = 0
@@ -90,14 +85,11 @@ def train(dataset, model, args):
             for i, feature_field in enumerate(dataset.numerical_feature_fields):
                 begin = dataset.index_offset[feature_field]
                 end = dataset.index_offset[feature_field] + dataset.feature_field_size[feature_field]
-                index = i+len(dataset.categorical_feature_fields)
+                index = i + len(dataset.categorical_feature_fields)
                 loss_num = loss_num + criterion(y_pred[:, :, begin:end].transpose(1, 2), y[:, :, index].long())
             loss_cat = loss_cat / len(dataset.categorical_feature_fields)
-            loss_num = loss_num / dataset.n_feature_fields * 0.05  # a hyper-parameter, a trick
+            loss_num = loss_num / len(dataset.numerical_feature_fields) * 0.005  # a hyper-parameter, a trick
             loss = loss_cat + loss_num
-
-            state_h = state_h.detach()
-            state_c = state_c.detach()
 
             loss.backward()
             optimizer.step()
@@ -118,30 +110,6 @@ def train(dataset, model, args):
             break
 
 
-# prepare initial states for predicting
-def warmup(dataset, model, n_steps):
-    model.eval()
-
-    state_h, state_c = model.init_state(dataset.n_procs)
-    state_h = state_h.to(device)
-    state_c = state_c.to(device)
-
-    begin_index = np.cumsum(dataset.n_events) - dataset.n_events
-
-    for i in range(n_steps):
-        x = np.zeros(shape=(dataset.n_procs, 1, dataset.n_feature_fields))
-        for proc_id in range(dataset.n_procs):
-            x[proc_id, 0, :] = dataset.events[begin_index[proc_id] + i, :]
-        x = torch.tensor(x, dtype=torch.float).to(device)
-
-        y_pred, (state_h, state_c) = model(x, (state_h, state_c))
-        state_h = state_h.detach()
-        state_c = state_c.detach()
-    # dataset.initial_state = (state_h.cpu().detach().numpy(), state_c.cpu().detach().numpy())
-    dataset.initial_data = np.zeros(shape=(dataset.n_procs, 1, dataset.n_feature_fields))
-    for proc_id in range(dataset.n_procs):
-        dataset.initial_data[proc_id, 0, :] = dataset.events[begin_index[proc_id] + n_steps, :]
-
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--max-epochs', type=int, default=5)
@@ -154,11 +122,8 @@ if __name__ == '__main__':
     dataset.load_events_train(data_path + 'train_dataset.csv', args.sequence_length,
                               data_path + 'partial_dataset.csv')
 
-    model = Model(dataset.n_feature_fields, dataset.n_features, torch.float).to(device)
+    model = Model(dataset.n_feature_fields, dataset.n_features, 8, 4, 16, 2).to(device)
 
-
-
-    # model.half()
     pytorch_total_params = sum(p.numel() for p in model.parameters())
     print('%d parameters in total' % pytorch_total_params)
     print('%d samples in total' % len(dataset))
@@ -168,8 +133,13 @@ if __name__ == '__main__':
     t_end = time.perf_counter_ns()
     print('Total time cost for training: %fs' % ((t_end - t_begin) / 1000000000.0))
 
+    begin_index = np.cumsum(dataset.n_events) - dataset.n_events
+    dataset.initial_data = np.zeros(shape=(dataset.n_procs, dataset.sq_length, dataset.n_feature_fields))
+    for proc_id in range(dataset.n_procs):
+        dataset.initial_data[proc_id, :, :] = dataset.events[
+                                              begin_index[proc_id] + 0:begin_index[
+                                                                              proc_id] + dataset.sq_length + 0, :]
 
-    warmup(dataset, model, 8192)
     torch.save(model.state_dict(), data_path + 'trace.model')
     dataset.serialize(data_path + 'dataset.info')
 
