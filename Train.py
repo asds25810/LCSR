@@ -12,11 +12,11 @@ import time
 from torchvision.models import AlexNet
 from torchviz import make_dot
 
-device = torch.device('cuda:5' if torch.cuda.is_available() else 'cpu')
+device = torch.device('cuda:7' if torch.cuda.is_available() else 'cpu')
 torch.cuda.set_device(device)
 
-# data_path = '/data/sunjw/LCSR/LULESH-512/'
-data_path = '/data/sunjw/LCSR/CG-D-64/'
+data_path = '/data/sunjw/LCSR/LULESH-64/'
+# data_path = '/data/sunjw/LCSR/MG-D-64/'
 
 class DataPrefetcher():
     def __init__(self, loader):
@@ -56,7 +56,7 @@ def train(dataset, model, args):
     criterion = nn.CrossEntropyLoss()
 
     # optimizer = optim.Adam(model.parameters(), lr=0.01)
-    optimizer = optim.AdamW(model.parameters(), lr=0.01)
+    optimizer = optim.AdamW(model.parameters(), lr=0.002)
     print('%d parameter group(s)' % len(list(model.parameters())))
     print('%d parameter group(s)' % len(optimizer.param_groups))
 
@@ -83,23 +83,28 @@ def train(dataset, model, args):
             # loss for categorical feature field
             loss_cat = 0
             for i, feature_field in enumerate(dataset.categorical_feature_fields):
+                coeff = 1.0
+                if feature_field == 'function':
+                    coeff = 1.0
+
                 begin = dataset.index_offset[feature_field]
                 end = dataset.index_offset[feature_field] + dataset.feature_field_size[feature_field]
-                loss_cat = loss_cat + criterion(y_pred[:, :, begin:end].transpose(1, 2), y[:, :, i].long())
+                loss_cat = loss_cat + criterion(y_pred[:, :, begin:end].transpose(1, 2), y[:, :, i].long()) * coeff
             loss_num = 0
             for i, feature_field in enumerate(dataset.numerical_feature_fields):
                 begin = dataset.index_offset[feature_field]
                 end = dataset.index_offset[feature_field] + dataset.feature_field_size[feature_field]
                 index = i+len(dataset.categorical_feature_fields)
                 loss_num = loss_num + criterion(y_pred[:, :, begin:end].transpose(1, 2), y[:, :, index].long())
-            loss_cat = loss_cat / len(dataset.categorical_feature_fields)
-            loss_num = loss_num / dataset.n_feature_fields * 0.05  # a hyper-parameter, a trick
+            loss_cat = loss_cat
+            loss_num = loss_num * 0.01  # a hyper-parameter, a trick
             loss = loss_cat + loss_num
 
             state_h = state_h.detach()
             state_c = state_c.detach()
 
             loss.backward()
+            nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.5, norm_type=2)
             optimizer.step()
 
             if batch_id % 50 == 0:
@@ -120,13 +125,16 @@ def train(dataset, model, args):
 
 # prepare initial states for predicting
 def warmup(dataset, model, n_steps):
+
+    begin_index = np.cumsum(dataset.n_events) - dataset.n_events
+    # n_steps = int(np.min(dataset.n_events) * 0.6)
+    n_steps = 8192
+
     model.eval()
 
     state_h, state_c = model.init_state(dataset.n_procs)
     state_h = state_h.to(device)
     state_c = state_c.to(device)
-
-    begin_index = np.cumsum(dataset.n_events) - dataset.n_events
 
     for i in range(n_steps):
         x = np.zeros(shape=(dataset.n_procs, 1, dataset.n_feature_fields))
@@ -137,10 +145,20 @@ def warmup(dataset, model, n_steps):
         y_pred, (state_h, state_c) = model(x, (state_h, state_c))
         state_h = state_h.detach()
         state_c = state_c.detach()
+
     # dataset.initial_state = (state_h.cpu().detach().numpy(), state_c.cpu().detach().numpy())
+
     dataset.initial_data = np.zeros(shape=(dataset.n_procs, 1, dataset.n_feature_fields))
     for proc_id in range(dataset.n_procs):
         dataset.initial_data[proc_id, 0, :] = dataset.events[begin_index[proc_id] + n_steps, :]
+
+def validate(dataset, model):
+    model.eval()
+
+    state_h, state_c = model.init_state(dataset.n_procs)
+    state_h = state_h.to(device)
+    state_c = state_c.to(device)
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -169,7 +187,7 @@ if __name__ == '__main__':
     print('Total time cost for training: %fs' % ((t_end - t_begin) / 1000000000.0))
 
 
-    warmup(dataset, model, 8192)
+    warmup(dataset, model, 121920)
     torch.save(model.state_dict(), data_path + 'trace.model')
     dataset.serialize(data_path + 'dataset.info')
 

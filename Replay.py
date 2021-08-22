@@ -5,9 +5,9 @@ from Trace_Dataset import Dataset
 import time
 from TraceStat import TraceStat
 
-# device = torch.device('cuda:5' if torch.cuda.is_available() else 'cpu')
-device = torch.device('cpu')
-# torch.cuda.set_device(device)
+device = torch.device('cuda:7' if torch.cuda.is_available() else 'cpu')
+# device = torch.device('cpu')
+torch.cuda.set_device(device)
 
 torch.manual_seed(0)
 np.random.seed(0)
@@ -16,7 +16,7 @@ np.random.seed(0)
 time_infer = 0
 time_decode = 0
 
-data_path = '/data/sunjw/LCSR/CG-D-512/'
+data_path = '/data/sunjw/LCSR/LULESH-64/'
 flag_replay = False
 flag_profile = True
 
@@ -65,7 +65,7 @@ state_h, state_c = model.init_state(dataset.n_procs)
 state_h = state_h.to(device)
 state_c = state_c.to(device)
 
-scale_factor = 20
+scale_factor = 10
 
 MAX_STEPS = int(np.max(dataset.n_events)/scale_factor)
 
@@ -125,7 +125,10 @@ for i in range(dataset.n_procs):
             if flag_profile:
                 end = time.perf_counter_ns()
                 time_global2raw += end - begin
-            trace_stats.update(event)
+
+            unzip_event = [event[0]] + event[1].split(';') + [event[-2], event[-1]]
+            trace_stats.update(unzip_event)
+
             if flag_profile:
                 begin = time.perf_counter_ns()
             file.write(dataset.get_event_str(event) + '\n')

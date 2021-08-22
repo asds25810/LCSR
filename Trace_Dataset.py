@@ -2,6 +2,7 @@ import torch
 import numpy as np
 from sklearn.preprocessing import KBinsDiscretizer
 from sklearn.cluster import KMeans
+from sklearn.cluster import MiniBatchKMeans
 import scipy.special
 from MPI_define import *
 import pandas as pd
@@ -29,6 +30,7 @@ class Dataset(torch.utils.data.Dataset):
         self.length = 0
         self.initial_data = None
         self.initial_state = None
+        self.prior_dist = []
 
         self.index_offset_gpu = None
         self.scale_bias_gpu = None
@@ -61,7 +63,7 @@ class Dataset(torch.utils.data.Dataset):
 
         print('load data')
         train_df = pd.read_csv(dataset_train_path, header=None)
-        train_df.columns = event_para_dict.keys()
+        train_df.columns = ['file', 'event', 'D', 'Blank']
         # train_df.dropna(axis=1, inplace=True, how='all')
 
         self.col_names = train_df.columns
@@ -70,28 +72,36 @@ class Dataset(torch.utils.data.Dataset):
         train_df.fillna(-1, inplace=True)
 
         print('discretize numerical features')
-        # the last two columns 'D' and 'Blank' is a numeric feature
-        self.categorical_feature_fields = ['file', 'function', 'count', 'datatype', 'target', 'tag']
+        # the last two columns 'D' and 'Blank' are numeric features
+        # self.categorical_feature_fields = ['file', 'function', 'count', 'datatype', 'target', 'tag']
+        self.categorical_feature_fields = ['file', 'event']
         self.numerical_feature_fields = ['D', 'Blank']
         for field in self.numerical_feature_fields:
-            km = KMeans(n_clusters=20, n_init=1)
+            km = MiniBatchKMeans(n_clusters=30, n_init=1)
             train_df[field] = km.fit_predict(train_df[field].to_numpy(dtype=np.float).reshape(-1, 1))
             self.index2value[field] = km.cluster_centers_
 
-            #     # quantile discretizing is faster
-            #     kbins = KBinsDiscretizer(n_bins=10, encode='ordinal', strategy='quantile')
-            #     train_df[field] = kbins.fit_transform(
-            #         train_df[field].to_numpy(dtype=np.float).reshape(-1, 1))
-            #     self.index2value[field] = []
-            #     for i in range(len(kbins.bin_edges_)-1):
-            #         self.index2value[field].apped((kbins.bin_edges_[i] + kbins.bin_edges_[i+1])/2)
-
+            # quantile discretizing is faster
+            # kbins = KBinsDiscretizer(n_bins=30, encode='ordinal', strategy='quantile')
+            # train_df[field] = kbins.fit_transform(
+            #     train_df[field].to_numpy(dtype=np.float).reshape(-1,1))
+            # self.index2value[field] = []
+            # for i in range(len(kbins.bin_edges_)-1):
+            #     self.index2value[field].apped((kbins.bin_edges_[i] + kbins.bin_edges_[i+1])/2)
 
             # todo visualization
             # x = train_df[field].to_numpy()
             # plt.hist(x, 10, density=True, facecolor='g', alpha=0.75, log=True)
             # plt.ylabel(field)
             # plt.show()
+
+        # test for zipping features
+        # print('test for zipping features')
+        # data_fileds = self.categorical_feature_fields[1:]  # exclude process id
+        # indices, values = pd.factorize(list(train_df[data_fileds].itertuples(index=False, name=None)),
+        #                                na_sentinel=None, sort=True)
+        # print('%d unique events' % values.size)
+
 
 
         print('prepare embeddings')
@@ -111,6 +121,7 @@ class Dataset(torch.utils.data.Dataset):
             # map values to global indices
             train_df[field] = indices
         self.n_categorical_features = self.n_features
+        print('%d unique events' % self.feature_field_size['event'])
 
         # preprocess for embeddings of multiple discrete numerical features,
         # convert input data to global index format
@@ -133,12 +144,8 @@ class Dataset(torch.utils.data.Dataset):
         self.events = train_df.to_numpy()
         self.n_events = train_df['file'].value_counts(sort=False).values.tolist()
         self.n_procs = len(self.index2value['file'])
-
-        # self.initial_data = np.zeros(shape=(self.n_procs,self.n_feature_fields), dtype=np.float)
-        # begin = 0
-        # for i in range(self.n_procs):
-        #     self.initial_data[i,:]=self.events[begin + 1024,:]
-        #     begin += self.n_events[i]
+        self.prior_dist = train_df.groupby(['file', 'event']).size().unstack(fill_value=0).to_numpy()
+        self.prior_dist = (self.prior_dist == 0).astype(int)
         print('done')
 
     def local2raw(self, event_local):
@@ -218,10 +225,12 @@ class Dataset(torch.utils.data.Dataset):
         return event_input, event_raw
 
     def onehot2global_gpu(self, event_onehot, event_input):
-
         for i, feature_field in enumerate(self.categorical_feature_fields):
             begin = self.index_offset[feature_field]
             end = self.index_offset[feature_field] + self.feature_field_size[feature_field]
+            if feature_field == 'event':
+                proc_id = event_input[:, :, 0].long()
+                event_onehot[:, :, begin:end] = event_onehot[:, :, begin:end] - self.prior_dist[proc_id] * 100
             event_input[:, :, i] = torch.argmax(event_onehot[:, :, begin:end], dim=2)
 
         for i, feature_field in enumerate(self.numerical_feature_fields):
@@ -239,7 +248,9 @@ class Dataset(torch.utils.data.Dataset):
         if self.initial_state is not None:
             self.initial_state_gpu = (torch.tensor(self.initial_state[0], dtype=torch.float).to(device),
                                       torch.tensor(self.initial_state[1], dtype=torch.float).to(device))
+        self.prior_dist = torch.tensor(self.prior_dist).to(device)
 
+    # stupid, just work
     def get_event_str(self, event_raw):
         line = ''
         for feature in event_raw:
@@ -248,7 +259,10 @@ class Dataset(torch.utils.data.Dataset):
                 if f < 0.0:
                     line += ','
                 else:
-                    line += str(int(feature)) + ','
+                    if int(f) < f:
+                        line += ('%.2f' % f) + ','
+                    else:
+                        line += str(int(f)) + ','
             except ValueError:
                 # trying to convert string to float will throw ValueError
                 line += str(feature) + ','
@@ -284,7 +298,8 @@ class Dataset(torch.utils.data.Dataset):
             'col_names': self.col_names,
             'n_procs': self.n_procs,
             'initial_data': self.initial_data,
-            'initial_state': self.initial_state
+            'initial_state': self.initial_state,
+            'prior_dist': self.prior_dist
         }
         with open(dataset_info_path, 'wb') as file:
             pickle.dump(dataset_info, file)
@@ -308,6 +323,7 @@ class Dataset(torch.utils.data.Dataset):
         self.n_procs = dataset_info['n_procs']
         self.initial_data = dataset_info['initial_data']
         self.initial_state = dataset_info['initial_state']
+        self.prior_dist = dataset_info['prior_dist']
 
     def __len__(self):
         if self.length == 0:

@@ -1,0 +1,655 @@
+@ mpiP
+@ Command : sweep3d.mpi 
+@ Version                  : 3.5.0
+@ MPIP Build date          : Apr  7 2021, 21:44:51
+@ Start time               : 2021 08 17 11:28:45
+@ Stop time                : 2021 08 17 11:28:45
+@ Timer Used               : gettimeofday
+@ MPIP env var             : [null]
+@ Collector Rank           : 0
+@ Collector PID            : 29957
+@ Final Output Dir         : .
+@ Report generation        : Single collector task
+@ MPI Task Assignment      : 0 ada-server
+@ MPI Task Assignment      : 1 ada-server
+@ MPI Task Assignment      : 2 ada-server
+@ MPI Task Assignment      : 3 ada-server
+@ MPI Task Assignment      : 4 ada-server
+@ MPI Task Assignment      : 5 ada-server
+@ MPI Task Assignment      : 6 ada-server
+@ MPI Task Assignment      : 7 ada-server
+@ MPI Task Assignment      : 8 ada-server
+@ MPI Task Assignment      : 9 ada-server
+@ MPI Task Assignment      : 10 ada-server
+@ MPI Task Assignment      : 11 ada-server
+@ MPI Task Assignment      : 12 ada-server
+@ MPI Task Assignment      : 13 ada-server
+@ MPI Task Assignment      : 14 ada-server
+@ MPI Task Assignment      : 15 ada-server
+@ MPI Task Assignment      : 16 ada-server
+@ MPI Task Assignment      : 17 ada-server
+@ MPI Task Assignment      : 18 ada-server
+@ MPI Task Assignment      : 19 ada-server
+@ MPI Task Assignment      : 20 ada-server
+@ MPI Task Assignment      : 21 ada-server
+@ MPI Task Assignment      : 22 ada-server
+@ MPI Task Assignment      : 23 ada-server
+@ MPI Task Assignment      : 24 ada-server
+@ MPI Task Assignment      : 25 ada-server
+@ MPI Task Assignment      : 26 ada-server
+@ MPI Task Assignment      : 27 ada-server
+@ MPI Task Assignment      : 28 ada-server
+@ MPI Task Assignment      : 29 ada-server
+@ MPI Task Assignment      : 30 ada-server
+@ MPI Task Assignment      : 31 ada-server
+@ MPI Task Assignment      : 32 ada-server
+@ MPI Task Assignment      : 33 ada-server
+@ MPI Task Assignment      : 34 ada-server
+@ MPI Task Assignment      : 35 ada-server
+@ MPI Task Assignment      : 36 ada-server
+@ MPI Task Assignment      : 37 ada-server
+@ MPI Task Assignment      : 38 ada-server
+@ MPI Task Assignment      : 39 ada-server
+@ MPI Task Assignment      : 40 ada-server
+@ MPI Task Assignment      : 41 ada-server
+@ MPI Task Assignment      : 42 ada-server
+@ MPI Task Assignment      : 43 ada-server
+@ MPI Task Assignment      : 44 ada-server
+@ MPI Task Assignment      : 45 ada-server
+@ MPI Task Assignment      : 46 ada-server
+@ MPI Task Assignment      : 47 ada-server
+@ MPI Task Assignment      : 48 ada-server
+@ MPI Task Assignment      : 49 ada-server
+@ MPI Task Assignment      : 50 ada-server
+@ MPI Task Assignment      : 51 ada-server
+@ MPI Task Assignment      : 52 ada-server
+@ MPI Task Assignment      : 53 ada-server
+@ MPI Task Assignment      : 54 ada-server
+@ MPI Task Assignment      : 55 ada-server
+@ MPI Task Assignment      : 56 ada-server
+@ MPI Task Assignment      : 57 ada-server
+@ MPI Task Assignment      : 58 ada-server
+@ MPI Task Assignment      : 59 ada-server
+@ MPI Task Assignment      : 60 ada-server
+@ MPI Task Assignment      : 61 ada-server
+@ MPI Task Assignment      : 62 ada-server
+@ MPI Task Assignment      : 63 ada-server
+
+---------------------------------------------------------------------------
+@--- MPI Time (seconds) ---------------------------------------------------
+---------------------------------------------------------------------------
+Task    AppTime    MPITime     MPI%
+   0   0.000364   0.000159    43.68
+   1   0.000224   0.000166    74.11
+   2   0.000236   0.000178    75.42
+   3   0.000221   0.000165    74.66
+   4     0.0499     0.0498    99.84
+   5     0.0242     0.0241    99.69
+   6     0.0664     0.0663    99.89
+   7     0.0629     0.0628    99.88
+   8     0.0496     0.0495    99.85
+   9     0.0406     0.0405    99.82
+  10     0.0493     0.0492    99.85
+  11     0.0529     0.0528    99.86
+  12     0.0567     0.0566    99.87
+  13     0.0558     0.0557    99.85
+  14     0.0545     0.0544    99.86
+  15       0.06     0.0599    99.87
+  16     0.0549     0.0548    99.87
+  17     0.0437     0.0436    99.81
+  18      0.022     0.0219    99.68
+  19      0.112      0.112    99.93
+  20       0.05       0.05    99.87
+  21     0.0367     0.0366    99.78
+  22     0.0821      0.082    99.92
+  23     0.0612     0.0611    99.87
+  24     0.0289     0.0289    99.80
+  25     0.0666     0.0665    99.88
+  26     0.0477     0.0477    99.83
+  27     0.0196     0.0195    99.67
+  28     0.0354     0.0354    99.82
+  29     0.0659     0.0658    99.86
+  30     0.0467     0.0466    99.84
+  31      0.063     0.0629    99.89
+  32     0.0387     0.0386    99.77
+  33     0.0447     0.0447    99.85
+  34     0.0667     0.0666    99.88
+  35    0.00637    0.00631    99.03
+  36     0.0551      0.055    99.87
+  37     0.0411      0.041    99.78
+  38     0.0837     0.0836    99.92
+  39     0.0631     0.0631    99.88
+  40     0.0593     0.0592    99.88
+  41     0.0406     0.0406    99.85
+  42     0.0663     0.0663    99.88
+  43      0.033     0.0329    99.80
+  44     0.0227     0.0226    99.67
+  45     0.0617     0.0616    99.89
+  46      0.072     0.0719    99.91
+  47     0.0372     0.0372    99.80
+  48   0.000201   0.000144    71.64
+  49     0.0611      0.061    99.86
+  50     0.0634     0.0633    99.88
+  51      0.103      0.102    99.94
+  52     0.0163     0.0163    99.58
+  53     0.0548     0.0547    99.86
+  54     0.0449     0.0448    99.85
+  55     0.0503     0.0502    99.83
+  56     0.0868     0.0868    99.92
+  57     0.0738     0.0738    99.91
+  58     0.0467     0.0467    99.83
+  59     0.0193     0.0193    99.71
+  60     0.0316     0.0315    99.80
+  61     0.0417     0.0416    99.79
+  62     0.0288     0.0288    99.79
+  63     0.0326     0.0325    99.79
+   *       3.01          3    99.84
+---------------------------------------------------------------------------
+@--- Callsites: 64 --------------------------------------------------------
+---------------------------------------------------------------------------
+ ID Lev File/Address        Line Parent_Funct             MPI_Call
+  1   0 0x409429                 [unknown]                Bcast
+  2   0 0x7fbf35fae08e           [unknown]                Bcast
+  3   0 0x7f40d5ba208e           [unknown]                Bcast
+  4   0 0x7f9bf4f1608e           [unknown]                Bcast
+  5   0 0x7fa4b436408e           [unknown]                Bcast
+  6   0 0x7f779d9bb08e           [unknown]                Bcast
+  7   0 0x7f2390dcd08e           [unknown]                Bcast
+  8   0 0x7fcbb1c8308e           [unknown]                Bcast
+  9   0 0x7f87c4a4208e           [unknown]                Bcast
+ 10   0 0x7f9c0ab5608e           [unknown]                Bcast
+ 11   0 0x7fed54efc08e           [unknown]                Bcast
+ 12   0 0x7f1b9321d08e           [unknown]                Bcast
+ 13   0 0x7f426c4ef08e           [unknown]                Bcast
+ 14   0 0x7f680970408e           [unknown]                Bcast
+ 15   0 0x7f6a67abc08e           [unknown]                Bcast
+ 16   0 0x7f587749d08e           [unknown]                Bcast
+ 17   0 0x7f966bd2b08e           [unknown]                Bcast
+ 18   0 0x7fc10349308e           [unknown]                Bcast
+ 19   0 0x7fa3c331308e           [unknown]                Bcast
+ 20   0 0x7fddebd3008e           [unknown]                Bcast
+ 21   0 0x7f7afef4408e           [unknown]                Bcast
+ 22   0 0x7f31242a208e           [unknown]                Bcast
+ 23   0 0x7f20d8ff908e           [unknown]                Bcast
+ 24   0 0x7fb9d593508e           [unknown]                Bcast
+ 25   0 0x7f83ed2b408e           [unknown]                Bcast
+ 26   0 0x7f29138fb08e           [unknown]                Bcast
+ 27   0 0x7fe9b6d4908e           [unknown]                Bcast
+ 28   0 0x7ffb6819d08e           [unknown]                Bcast
+ 29   0 0x7f8393c0408e           [unknown]                Bcast
+ 30   0 0x7f6b36eff08e           [unknown]                Bcast
+ 31   0 0x7f818e19908e           [unknown]                Bcast
+ 32   0 0x7f3f5ba6408e           [unknown]                Bcast
+ 33   0 0x7fe975e5f08e           [unknown]                Bcast
+ 34   0 0x7f6714ba308e           [unknown]                Bcast
+ 35   0 0x7faf9f83708e           [unknown]                Bcast
+ 36   0 0x7f3238a4008e           [unknown]                Bcast
+ 37   0 0x7fd18eec608e           [unknown]                Bcast
+ 38   0 0x7fd3a378208e           [unknown]                Bcast
+ 39   0 0x7fe84b06e08e           [unknown]                Bcast
+ 40   0 0x7fb2038e408e           [unknown]                Bcast
+ 41   0 0x7fbb9271308e           [unknown]                Bcast
+ 42   0 0x7f154f31408e           [unknown]                Bcast
+ 43   0 0x7fe6d596a08e           [unknown]                Bcast
+ 44   0 0x7f31329d008e           [unknown]                Bcast
+ 45   0 0x7f8bba30e08e           [unknown]                Bcast
+ 46   0 0x7f033d9ef08e           [unknown]                Bcast
+ 47   0 0x7f613c0ad08e           [unknown]                Bcast
+ 48   0 0x7f858ba0e08e           [unknown]                Bcast
+ 49   0 0x7fdefbde408e           [unknown]                Bcast
+ 50   0 0x7fd0ff7b108e           [unknown]                Bcast
+ 51   0 0x7f0d2bcc608e           [unknown]                Bcast
+ 52   0 0x7fc06140808e           [unknown]                Bcast
+ 53   0 0x7fb0adc5008e           [unknown]                Bcast
+ 54   0 0x7fa274bd508e           [unknown]                Bcast
+ 55   0 0x7feb2dd4808e           [unknown]                Bcast
+ 56   0 0x7fc4065d408e           [unknown]                Bcast
+ 57   0 0x7f426badd08e           [unknown]                Bcast
+ 58   0 0x7f968337d08e           [unknown]                Bcast
+ 59   0 0x7fef2d01708e           [unknown]                Bcast
+ 60   0 0x7f9fd6bc508e           [unknown]                Bcast
+ 61   0 0x7f35d617c08e           [unknown]                Bcast
+ 62   0 0x7fa719cca08e           [unknown]                Bcast
+ 63   0 0x7f5edd98608e           [unknown]                Bcast
+ 64   0 0x7ff86ba7608e           [unknown]                Bcast
+---------------------------------------------------------------------------
+@--- Aggregate Time (top twenty, descending, milliseconds) ----------------
+---------------------------------------------------------------------------
+Call                 Site       Time    App%    MPI%      Count    COV
+Bcast                  20        112    3.74    3.74          1   0.00
+Bcast                  52        102    3.41    3.41          1   0.00
+Bcast                  57       86.8    2.88    2.89          1   0.00
+Bcast                  39       83.6    2.78    2.78          1   0.00
+Bcast                  23         82    2.73    2.73          1   0.00
+Bcast                  58       73.8    2.45    2.46          1   0.00
+Bcast                  47       71.9    2.39    2.39          1   0.00
+Bcast                  35       66.6    2.22    2.22          1   0.00
+Bcast                  26       66.5    2.21    2.22          1   0.00
+Bcast                   7       66.3    2.20    2.21          1   0.00
+Bcast                  43       66.3    2.20    2.21          1   0.00
+Bcast                  30       65.8    2.19    2.19          1   0.00
+Bcast                  51       63.3    2.10    2.11          1   0.00
+Bcast                  40       63.1    2.10    2.10          1   0.00
+Bcast                  32       62.9    2.09    2.09          1   0.00
+Bcast                   8       62.8    2.09    2.09          1   0.00
+Bcast                  46       61.6    2.05    2.05          1   0.00
+Bcast                  24       61.1    2.03    2.04          1   0.00
+Bcast                  50         61    2.03    2.03          1   0.00
+Bcast                  16       59.9    1.99    1.99          1   0.00
+---------------------------------------------------------------------------
+@--- Aggregate Sent Message Size (top twenty, descending, bytes) ----------
+---------------------------------------------------------------------------
+Call                 Site      Count      Total       Avrg  Sent%
+Bcast                  64          1          4          4   1.56
+Bcast                  31          1          4          4   1.56
+Bcast                  30          1          4          4   1.56
+Bcast                  29          1          4          4   1.56
+Bcast                  28          1          4          4   1.56
+Bcast                  27          1          4          4   1.56
+Bcast                  26          1          4          4   1.56
+Bcast                  25          1          4          4   1.56
+Bcast                  24          1          4          4   1.56
+Bcast                  23          1          4          4   1.56
+Bcast                  22          1          4          4   1.56
+Bcast                  21          1          4          4   1.56
+Bcast                  20          1          4          4   1.56
+Bcast                  19          1          4          4   1.56
+Bcast                  18          1          4          4   1.56
+Bcast                  17          1          4          4   1.56
+Bcast                  16          1          4          4   1.56
+Bcast                  15          1          4          4   1.56
+Bcast                  14          1          4          4   1.56
+Bcast                  13          1          4          4   1.56
+---------------------------------------------------------------------------
+@--- Callsite Time statistics (all, milliseconds): 64 ---------------------
+---------------------------------------------------------------------------
+Name              Site Rank  Count      Max     Mean      Min   App%   MPI%
+Bcast                1    0      1    0.159    0.159    0.159  43.68 100.00
+Bcast                1    *      1    0.159    0.159    0.159   0.01   0.01
+
+Bcast                2    1      1    0.166    0.166    0.166  74.11 100.00
+Bcast                2    *      1    0.166    0.166    0.166   0.01   0.01
+
+Bcast                3    2      1    0.178    0.178    0.178  75.42 100.00
+Bcast                3    *      1    0.178    0.178    0.178   0.01   0.01
+
+Bcast                4    3      1    0.165    0.165    0.165  74.66 100.00
+Bcast                4    *      1    0.165    0.165    0.165   0.01   0.01
+
+Bcast                5    4      1     49.8     49.8     49.8  99.84 100.00
+Bcast                5    *      1     49.8     49.8     49.8   1.66   1.66
+
+Bcast                6    5      1     24.1     24.1     24.1  99.69 100.00
+Bcast                6    *      1     24.1     24.1     24.1   0.80   0.80
+
+Bcast                7    6      1     66.3     66.3     66.3  99.89 100.00
+Bcast                7    *      1     66.3     66.3     66.3   2.20   2.21
+
+Bcast                8    7      1     62.8     62.8     62.8  99.88 100.00
+Bcast                8    *      1     62.8     62.8     62.8   2.09   2.09
+
+Bcast                9    8      1     49.5     49.5     49.5  99.85 100.00
+Bcast                9    *      1     49.5     49.5     49.5   1.65   1.65
+
+Bcast               10    9      1     40.5     40.5     40.5  99.82 100.00
+Bcast               10    *      1     40.5     40.5     40.5   1.35   1.35
+
+Bcast               11   10      1     49.2     49.2     49.2  99.85 100.00
+Bcast               11    *      1     49.2     49.2     49.2   1.64   1.64
+
+Bcast               12   11      1     52.8     52.8     52.8  99.86 100.00
+Bcast               12    *      1     52.8     52.8     52.8   1.76   1.76
+
+Bcast               13   12      1     56.6     56.6     56.6  99.87 100.00
+Bcast               13    *      1     56.6     56.6     56.6   1.88   1.89
+
+Bcast               14   13      1     55.7     55.7     55.7  99.85 100.00
+Bcast               14    *      1     55.7     55.7     55.7   1.85   1.86
+
+Bcast               15   14      1     54.4     54.4     54.4  99.86 100.00
+Bcast               15    *      1     54.4     54.4     54.4   1.81   1.81
+
+Bcast               16   15      1     59.9     59.9     59.9  99.87 100.00
+Bcast               16    *      1     59.9     59.9     59.9   1.99   1.99
+
+Bcast               17   16      1     54.8     54.8     54.8  99.87 100.00
+Bcast               17    *      1     54.8     54.8     54.8   1.82   1.83
+
+Bcast               18   17      1     43.6     43.6     43.6  99.81 100.00
+Bcast               18    *      1     43.6     43.6     43.6   1.45   1.45
+
+Bcast               19   18      1     21.9     21.9     21.9  99.68 100.00
+Bcast               19    *      1     21.9     21.9     21.9   0.73   0.73
+
+Bcast               20   19      1      112      112      112  99.93 100.00
+Bcast               20    *      1      112      112      112   3.74   3.74
+
+Bcast               21   20      1       50       50       50  99.87 100.00
+Bcast               21    *      1       50       50       50   1.66   1.66
+
+Bcast               22   21      1     36.6     36.6     36.6  99.78 100.00
+Bcast               22    *      1     36.6     36.6     36.6   1.22   1.22
+
+Bcast               23   22      1       82       82       82  99.92 100.00
+Bcast               23    *      1       82       82       82   2.73   2.73
+
+Bcast               24   23      1     61.1     61.1     61.1  99.87 100.00
+Bcast               24    *      1     61.1     61.1     61.1   2.03   2.04
+
+Bcast               25   24      1     28.9     28.9     28.9  99.80 100.00
+Bcast               25    *      1     28.9     28.9     28.9   0.96   0.96
+
+Bcast               26   25      1     66.5     66.5     66.5  99.88 100.00
+Bcast               26    *      1     66.5     66.5     66.5   2.21   2.22
+
+Bcast               27   26      1     47.7     47.7     47.7  99.83 100.00
+Bcast               27    *      1     47.7     47.7     47.7   1.58   1.59
+
+Bcast               28   27      1     19.5     19.5     19.5  99.67 100.00
+Bcast               28    *      1     19.5     19.5     19.5   0.65   0.65
+
+Bcast               29   28      1     35.4     35.4     35.4  99.82 100.00
+Bcast               29    *      1     35.4     35.4     35.4   1.18   1.18
+
+Bcast               30   29      1     65.8     65.8     65.8  99.86 100.00
+Bcast               30    *      1     65.8     65.8     65.8   2.19   2.19
+
+Bcast               31   30      1     46.6     46.6     46.6  99.84 100.00
+Bcast               31    *      1     46.6     46.6     46.6   1.55   1.55
+
+Bcast               32   31      1     62.9     62.9     62.9  99.89 100.00
+Bcast               32    *      1     62.9     62.9     62.9   2.09   2.09
+
+Bcast               33   32      1     38.6     38.6     38.6  99.77 100.00
+Bcast               33    *      1     38.6     38.6     38.6   1.28   1.29
+
+Bcast               34   33      1     44.7     44.7     44.7  99.85 100.00
+Bcast               34    *      1     44.7     44.7     44.7   1.48   1.49
+
+Bcast               35   34      1     66.6     66.6     66.6  99.88 100.00
+Bcast               35    *      1     66.6     66.6     66.6   2.22   2.22
+
+Bcast               36   35      1     6.31     6.31     6.31  99.03 100.00
+Bcast               36    *      1     6.31     6.31     6.31   0.21   0.21
+
+Bcast               37   36      1       55       55       55  99.87 100.00
+Bcast               37    *      1       55       55       55   1.83   1.83
+
+Bcast               38   37      1       41       41       41  99.78 100.00
+Bcast               38    *      1       41       41       41   1.36   1.37
+
+Bcast               39   38      1     83.6     83.6     83.6  99.92 100.00
+Bcast               39    *      1     83.6     83.6     83.6   2.78   2.78
+
+Bcast               40   39      1     63.1     63.1     63.1  99.88 100.00
+Bcast               40    *      1     63.1     63.1     63.1   2.10   2.10
+
+Bcast               41   40      1     59.2     59.2     59.2  99.88 100.00
+Bcast               41    *      1     59.2     59.2     59.2   1.97   1.97
+
+Bcast               42   41      1     40.6     40.6     40.6  99.85 100.00
+Bcast               42    *      1     40.6     40.6     40.6   1.35   1.35
+
+Bcast               43   42      1     66.3     66.3     66.3  99.88 100.00
+Bcast               43    *      1     66.3     66.3     66.3   2.20   2.21
+
+Bcast               44   43      1     32.9     32.9     32.9  99.80 100.00
+Bcast               44    *      1     32.9     32.9     32.9   1.09   1.10
+
+Bcast               45   44      1     22.6     22.6     22.6  99.67 100.00
+Bcast               45    *      1     22.6     22.6     22.6   0.75   0.75
+
+Bcast               46   45      1     61.6     61.6     61.6  99.89 100.00
+Bcast               46    *      1     61.6     61.6     61.6   2.05   2.05
+
+Bcast               47   46      1     71.9     71.9     71.9  99.91 100.00
+Bcast               47    *      1     71.9     71.9     71.9   2.39   2.39
+
+Bcast               48   47      1     37.2     37.2     37.2  99.80 100.00
+Bcast               48    *      1     37.2     37.2     37.2   1.24   1.24
+
+Bcast               49   48      1    0.144    0.144    0.144  71.64 100.00
+Bcast               49    *      1    0.144    0.144    0.144   0.00   0.00
+
+Bcast               50   49      1       61       61       61  99.86 100.00
+Bcast               50    *      1       61       61       61   2.03   2.03
+
+Bcast               51   50      1     63.3     63.3     63.3  99.88 100.00
+Bcast               51    *      1     63.3     63.3     63.3   2.10   2.11
+
+Bcast               52   51      1      102      102      102  99.94 100.00
+Bcast               52    *      1      102      102      102   3.41   3.41
+
+Bcast               53   52      1     16.3     16.3     16.3  99.58 100.00
+Bcast               53    *      1     16.3     16.3     16.3   0.54   0.54
+
+Bcast               54   53      1     54.7     54.7     54.7  99.86 100.00
+Bcast               54    *      1     54.7     54.7     54.7   1.82   1.82
+
+Bcast               55   54      1     44.8     44.8     44.8  99.85 100.00
+Bcast               55    *      1     44.8     44.8     44.8   1.49   1.49
+
+Bcast               56   55      1     50.2     50.2     50.2  99.83 100.00
+Bcast               56    *      1     50.2     50.2     50.2   1.67   1.67
+
+Bcast               57   56      1     86.8     86.8     86.8  99.92 100.00
+Bcast               57    *      1     86.8     86.8     86.8   2.88   2.89
+
+Bcast               58   57      1     73.8     73.8     73.8  99.91 100.00
+Bcast               58    *      1     73.8     73.8     73.8   2.45   2.46
+
+Bcast               59   58      1     46.7     46.7     46.7  99.83 100.00
+Bcast               59    *      1     46.7     46.7     46.7   1.55   1.55
+
+Bcast               60   59      1     19.3     19.3     19.3  99.71 100.00
+Bcast               60    *      1     19.3     19.3     19.3   0.64   0.64
+
+Bcast               61   60      1     31.5     31.5     31.5  99.80 100.00
+Bcast               61    *      1     31.5     31.5     31.5   1.05   1.05
+
+Bcast               62   61      1     41.6     41.6     41.6  99.79 100.00
+Bcast               62    *      1     41.6     41.6     41.6   1.38   1.39
+
+Bcast               63   62      1     28.8     28.8     28.8  99.79 100.00
+Bcast               63    *      1     28.8     28.8     28.8   0.96   0.96
+
+Bcast               64   63      1     32.5     32.5     32.5  99.79 100.00
+Bcast               64    *      1     32.5     32.5     32.5   1.08   1.08
+---------------------------------------------------------------------------
+@--- Callsite Message Sent statistics (all, sent bytes) -------------------
+---------------------------------------------------------------------------
+Name              Site Rank   Count       Max      Mean       Min       Sum
+Bcast                1    0       1         4         4         4         4
+Bcast                1    *       1         4         4         4         4
+
+Bcast                2    1       1         4         4         4         4
+Bcast                2    *       1         4         4         4         4
+
+Bcast                3    2       1         4         4         4         4
+Bcast                3    *       1         4         4         4         4
+
+Bcast                4    3       1         4         4         4         4
+Bcast                4    *       1         4         4         4         4
+
+Bcast                5    4       1         4         4         4         4
+Bcast                5    *       1         4         4         4         4
+
+Bcast                6    5       1         4         4         4         4
+Bcast                6    *       1         4         4         4         4
+
+Bcast                7    6       1         4         4         4         4
+Bcast                7    *       1         4         4         4         4
+
+Bcast                8    7       1         4         4         4         4
+Bcast                8    *       1         4         4         4         4
+
+Bcast                9    8       1         4         4         4         4
+Bcast                9    *       1         4         4         4         4
+
+Bcast               10    9       1         4         4         4         4
+Bcast               10    *       1         4         4         4         4
+
+Bcast               11   10       1         4         4         4         4
+Bcast               11    *       1         4         4         4         4
+
+Bcast               12   11       1         4         4         4         4
+Bcast               12    *       1         4         4         4         4
+
+Bcast               13   12       1         4         4         4         4
+Bcast               13    *       1         4         4         4         4
+
+Bcast               14   13       1         4         4         4         4
+Bcast               14    *       1         4         4         4         4
+
+Bcast               15   14       1         4         4         4         4
+Bcast               15    *       1         4         4         4         4
+
+Bcast               16   15       1         4         4         4         4
+Bcast               16    *       1         4         4         4         4
+
+Bcast               17   16       1         4         4         4         4
+Bcast               17    *       1         4         4         4         4
+
+Bcast               18   17       1         4         4         4         4
+Bcast               18    *       1         4         4         4         4
+
+Bcast               19   18       1         4         4         4         4
+Bcast               19    *       1         4         4         4         4
+
+Bcast               20   19       1         4         4         4         4
+Bcast               20    *       1         4         4         4         4
+
+Bcast               21   20       1         4         4         4         4
+Bcast               21    *       1         4         4         4         4
+
+Bcast               22   21       1         4         4         4         4
+Bcast               22    *       1         4         4         4         4
+
+Bcast               23   22       1         4         4         4         4
+Bcast               23    *       1         4         4         4         4
+
+Bcast               24   23       1         4         4         4         4
+Bcast               24    *       1         4         4         4         4
+
+Bcast               25   24       1         4         4         4         4
+Bcast               25    *       1         4         4         4         4
+
+Bcast               26   25       1         4         4         4         4
+Bcast               26    *       1         4         4         4         4
+
+Bcast               27   26       1         4         4         4         4
+Bcast               27    *       1         4         4         4         4
+
+Bcast               28   27       1         4         4         4         4
+Bcast               28    *       1         4         4         4         4
+
+Bcast               29   28       1         4         4         4         4
+Bcast               29    *       1         4         4         4         4
+
+Bcast               30   29       1         4         4         4         4
+Bcast               30    *       1         4         4         4         4
+
+Bcast               31   30       1         4         4         4         4
+Bcast               31    *       1         4         4         4         4
+
+Bcast               32   31       1         4         4         4         4
+Bcast               32    *       1         4         4         4         4
+
+Bcast               33   32       1         4         4         4         4
+Bcast               33    *       1         4         4         4         4
+
+Bcast               34   33       1         4         4         4         4
+Bcast               34    *       1         4         4         4         4
+
+Bcast               35   34       1         4         4         4         4
+Bcast               35    *       1         4         4         4         4
+
+Bcast               36   35       1         4         4         4         4
+Bcast               36    *       1         4         4         4         4
+
+Bcast               37   36       1         4         4         4         4
+Bcast               37    *       1         4         4         4         4
+
+Bcast               38   37       1         4         4         4         4
+Bcast               38    *       1         4         4         4         4
+
+Bcast               39   38       1         4         4         4         4
+Bcast               39    *       1         4         4         4         4
+
+Bcast               40   39       1         4         4         4         4
+Bcast               40    *       1         4         4         4         4
+
+Bcast               41   40       1         4         4         4         4
+Bcast               41    *       1         4         4         4         4
+
+Bcast               42   41       1         4         4         4         4
+Bcast               42    *       1         4         4         4         4
+
+Bcast               43   42       1         4         4         4         4
+Bcast               43    *       1         4         4         4         4
+
+Bcast               44   43       1         4         4         4         4
+Bcast               44    *       1         4         4         4         4
+
+Bcast               45   44       1         4         4         4         4
+Bcast               45    *       1         4         4         4         4
+
+Bcast               46   45       1         4         4         4         4
+Bcast               46    *       1         4         4         4         4
+
+Bcast               47   46       1         4         4         4         4
+Bcast               47    *       1         4         4         4         4
+
+Bcast               48   47       1         4         4         4         4
+Bcast               48    *       1         4         4         4         4
+
+Bcast               49   48       1         4         4         4         4
+Bcast               49    *       1         4         4         4         4
+
+Bcast               50   49       1         4         4         4         4
+Bcast               50    *       1         4         4         4         4
+
+Bcast               51   50       1         4         4         4         4
+Bcast               51    *       1         4         4         4         4
+
+Bcast               52   51       1         4         4         4         4
+Bcast               52    *       1         4         4         4         4
+
+Bcast               53   52       1         4         4         4         4
+Bcast               53    *       1         4         4         4         4
+
+Bcast               54   53       1         4         4         4         4
+Bcast               54    *       1         4         4         4         4
+
+Bcast               55   54       1         4         4         4         4
+Bcast               55    *       1         4         4         4         4
+
+Bcast               56   55       1         4         4         4         4
+Bcast               56    *       1         4         4         4         4
+
+Bcast               57   56       1         4         4         4         4
+Bcast               57    *       1         4         4         4         4
+
+Bcast               58   57       1         4         4         4         4
+Bcast               58    *       1         4         4         4         4
+
+Bcast               59   58       1         4         4         4         4
+Bcast               59    *       1         4         4         4         4
+
+Bcast               60   59       1         4         4         4         4
+Bcast               60    *       1         4         4         4         4
+
+Bcast               61   60       1         4         4         4         4
+Bcast               61    *       1         4         4         4         4
+
+Bcast               62   61       1         4         4         4         4
+Bcast               62    *       1         4         4         4         4
+
+Bcast               63   62       1         4         4         4         4
+Bcast               63    *       1         4         4         4         4
+
+Bcast               64   63       1         4         4         4         4
+Bcast               64    *       1         4         4         4         4
+---------------------------------------------------------------------------
+@--- End of Report --------------------------------------------------------
+---------------------------------------------------------------------------

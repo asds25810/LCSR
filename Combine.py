@@ -2,6 +2,7 @@ import csv
 import re
 from MPI_define import *
 from TraceStat import TraceStat
+import sys
 
 para_dict = {
     'file': 0,
@@ -21,7 +22,11 @@ def get_offset(source, dest, nprocs):
 
 
 nprocs = 64
-data_path = '/data/sunjw/LCSR/CG-D-64/'
+data_path = '/data/sunjw/LCSR/SP-D-64/'
+
+if len(sys.argv) > 1:
+    nprocs = int(sys.argv[1])
+    data_path = sys.argv[2]
 
 trace_stat = TraceStat(nprocs)
 
@@ -33,8 +38,8 @@ for i in range(nprocs):
         print('Processing trace %d' % i)
         last_end = 0
         for line in f_in:
-            para_list = [None] * len(para_dict)
-            para_list[0] = i
+            para_list = [''] * len(para_dict)
+            para_list[0] = str(i)
             func = re.findall(r': (.*?)= \(', line)
             if func:
                 para_list[1] = func[0]
@@ -79,15 +84,15 @@ for i in range(nprocs):
             if source:
                 assert func[0] in recv_list
                 s = int(source[0])
-                # offset = get_offset(s, i, nprocs)
-                para_list[4] = str(s)
+                offset = get_offset(s, i, nprocs)
+                para_list[4] = str(offset)
 
             dest = re.findall(r'dest= (.*?),', line)
             if dest:
                 assert func[0] in send_list
                 d = int(dest[0])
-                # offset = get_offset(i, d, nprocs)
-                para_list[4] = str(d)
+                offset = get_offset(i, d, nprocs)
+                para_list[4] = str(offset)
 
             root = re.findall(r'root= (.*?),', line)
             if root:
@@ -101,16 +106,22 @@ for i in range(nprocs):
             E = re.findall(r'E=\[ (.*?) \]', line)
             D = re.findall(r'D=\[ (.*?) \]', line)
             if D:
-                # para_list[6] =D[0]
-                para_list[6] = str(int(E[0]) - int(S[0]))
+                para_list[6] = D[0]
+                # para_list[6] = str(int(E[0]) - int(S[0]))
 
 
             if E:
                 Blank = int(S[0]) - last_end
-                last_end = int(E[0]) + int(D[0])
+                # last_end = int(E[0]) + int(D[0])
+                last_end = int(E[0])
                 para_list[7] = str(Blank)
 
-            csv_writer.writerow(para_list)
+            # zip event feature fields
+            zip_list = para_list[1]
+            for j in range(2, 6):
+                zip_list += ';'+ para_list[j]
+
+            csv_writer.writerow([para_list[0], zip_list, para_list[6], para_list[7]])
 
             trace_stat.update(para_list)
             trace_stat.max_events[i] += 1
