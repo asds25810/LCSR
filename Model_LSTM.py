@@ -1,24 +1,22 @@
 import torch
 from torch import nn
 
-
+# can be more elegant
 class Model(nn.Module):
-    def __init__(self, n_feature_fields, n_features, type=torch.float):
+    def __init__(self, input_size, n_input_fields, output_size, lstm_size, embedding_dim, n_layers):
         super(Model, self).__init__()
-        self.lstm_size = 32
-        self.embedding_dim = 8
-        self.num_layers = 2
-        self.type = type
+        self.lstm_size = lstm_size
+        self.n_layers = n_layers
 
         self.embedding = nn.Embedding(
-            num_embeddings=n_features,
-            embedding_dim=self.embedding_dim,
+            num_embeddings=input_size,
+            embedding_dim=embedding_dim,
         )
 
         self.lstm = nn.LSTM(
-            input_size=n_feature_fields * self.embedding_dim,
-            hidden_size=self.lstm_size,
-            num_layers=self.num_layers,
+            input_size=n_input_fields * embedding_dim,
+            hidden_size=lstm_size,
+            num_layers=n_layers,
             batch_first=True
         )
         for param in self.lstm.parameters():
@@ -26,16 +24,16 @@ class Model(nn.Module):
                 torch.nn.init.orthogonal_(param.data)
             else:
                 torch.nn.init.normal_(param.data)
-        self.fc = nn.Linear(self.lstm_size, n_features)
+        self.fc = nn.Linear(lstm_size, output_size)
         torch.nn.init.xavier_normal_(self.fc.weight.data)
         torch.nn.init.normal_(self.fc.bias.data)
 
-    def forward(self, x, prev_state):
+    def forward(self, x, state):
         embed = self.embedding(x.long())
-        output, state = self.lstm(torch.reshape(embed, (embed.shape[0], embed.shape[1], -1)), prev_state)
+        output, (state_h, state_c) = self.lstm(torch.reshape(embed, (embed.shape[0], embed.shape[1], -1)), state)
         logits = self.fc(output)
-        return logits, state
+        return logits, (state_h.detach(), state_c.detach())
 
-    def init_state(self, batch_size):
-        return (torch.zeros(self.num_layers, batch_size, self.lstm_size, dtype=self.type),
-                torch.zeros(self.num_layers, batch_size, self.lstm_size, dtype=self.type))
+    def init_state(self, batch_size, device):
+        return (torch.zeros(self.n_layers, batch_size, self.lstm_size).to(device),
+                torch.zeros(self.n_layers, batch_size, self.lstm_size).to(device))

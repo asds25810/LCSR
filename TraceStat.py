@@ -8,8 +8,8 @@ import math
 
 class Stat:
     def __init__(self, n_procs):
-        self.comp_time = 0
-        self.comm_time = 0
+        self.comp_time = 0.0
+        self.comm_time = 0.0
         self.n_events = 0
         # self.send_count = []
         self.send_bytes = [0] * n_procs
@@ -28,18 +28,21 @@ class TraceStat:
 
     def update(self, event):
         proc_id = int(event[0])
-        comp_time = int(event[-1])
-        comm_time = int(event[-2])
+        comp_time = float(event[-1])
+        comm_time = float(event[-2])
         mpi_func = event[1]
 
         if mpi_func in send_list:
             source = proc_id
-            target = int(event[4])
+            offset = int(event[4])
+            target = (source + offset) % self.n_procs
             n_bytes = int(event[2]) * int(event[3])
             self.stats[source].send_bytes[target] += n_bytes
         elif mpi_func in recv_list:
-            source = int(event[4])
             target = proc_id
+            offset = int(event[4])
+            source = (target + self.n_procs - offset) % self.n_procs
+
             n_bytes = int(event[2]) * int(event[3])
             self.stats[target].recv_bytes[source] += n_bytes
         else:
@@ -71,7 +74,7 @@ class TraceStat:
             matrix_recv[i, :] = np.array(self.stats[i].recv_bytes)
         matrix = matrix_send * self.scale_factor  # np.maximum(matrix_send, matrix_recv) * self.scale_factor
         plt.figure(figsize=(8, 6))
-        sns.heatmap(matrix, cmap="binary", linecolor='Black', norm=LogNorm(vmin=1000))
+        sns.heatmap(matrix, cmap="binary", linecolor='Black', norm=LogNorm(vmin=1))
         plt.xlabel("Sender Rank")
         plt.ylabel("Receiver Rank")
         plt.ylim(0, self.n_procs)

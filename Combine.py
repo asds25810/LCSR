@@ -22,7 +22,7 @@ def get_offset(source, dest, nprocs):
 
 
 nprocs = 64
-data_path = '/data/sunjw/LCSR/SP-D-64/'
+data_path = '/data/sunjw/LCSR/sweep3d-64/'
 
 if len(sys.argv) > 1:
     nprocs = int(sys.argv[1])

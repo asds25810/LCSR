@@ -27,6 +27,7 @@ class Dataset(torch.utils.data.Dataset):
         self.col_names = []
         self.n_procs = 0
         self.events = None
+        self.times = None
         self.length = 0
         self.initial_data = None
         self.initial_state = None
@@ -68,8 +69,34 @@ class Dataset(torch.utils.data.Dataset):
 
         self.col_names = train_df.columns
 
-        # train_df[8192:sq_length + 8192].to_csv(dataset_eval_path, index=False, header=False)
         train_df.fillna(-1, inplace=True)
+
+        # while True:
+        #     ids = np.random.randint(0, len(train_df))
+        #     d = train_df['D'].to_numpy()[ids:ids+256]
+        #     b = train_df['Blank'].to_numpy()[ids:ids+256]
+        #     plt.hist(np.log(d), 32, density=False, facecolor='g', alpha=0.75, log=True)
+        #     plt.title('D')
+        #     plt.show()
+        #     plt.hist(np.log(b), 32, density=False, facecolor='g', alpha=0.75, log=True)
+        #     plt.title('B')
+        #     plt.show()
+        #     plt.hist(np.log(d+b), 32, density=False, facecolor='g', alpha=0.75, log=True)
+        #     plt.title('SUM')
+        #     plt.show()
+
+        # d_dist = train_df.groupby(['file'])['D']
+        # b_dist = train_df.groupby(['file'])['Blank']
+
+        # for (event_id, data) in d_dist:
+        #     plt.hist(data.values, 50, density=False, facecolor='g', alpha=0.75, log=True)
+        #     plt.title('event %s' % event_id)
+        #     plt.show()
+
+        # for (event_id, data) in b_dist:
+        #     plt.hist(data.values, 50, density=False, facecolor='g', alpha=0.75, log=True)
+        #     plt.title('event %s' % event_id)
+        #     plt.show()
 
         print('discretize numerical features')
         # the last two columns 'D' and 'Blank' are numeric features
@@ -77,8 +104,8 @@ class Dataset(torch.utils.data.Dataset):
         self.categorical_feature_fields = ['file', 'event']
         self.numerical_feature_fields = ['D', 'Blank']
         for field in self.numerical_feature_fields:
-            km = MiniBatchKMeans(n_clusters=30, n_init=1)
-            train_df[field] = km.fit_predict(train_df[field].to_numpy(dtype=np.float).reshape(-1, 1))
+            km = MiniBatchKMeans(n_clusters=16, n_init=1)
+            train_df[field] = km.fit_predict(np.log(1 + train_df[field].to_numpy(dtype=np.float).reshape(-1, 1)))
             self.index2value[field] = km.cluster_centers_
 
             # quantile discretizing is faster
@@ -102,8 +129,6 @@ class Dataset(torch.utils.data.Dataset):
         #                                na_sentinel=None, sort=True)
         # print('%d unique events' % values.size)
 
-
-
         print('prepare embeddings')
         # preprocess for embeddings of multiple categorical features, convert input data to global index format
         self.n_features = 0
@@ -125,6 +150,7 @@ class Dataset(torch.utils.data.Dataset):
 
         # preprocess for embeddings of multiple discrete numerical features,
         # convert input data to global index format
+        self.n_numerical_features = 0
         for field in self.numerical_feature_fields:
             # assign global indices
             self.index_offset[field] = self.n_features
@@ -135,17 +161,18 @@ class Dataset(torch.utils.data.Dataset):
             self.feature_field_size[field] = len(self.index2value[field])
         self.n_numerical_features = self.n_features - self.n_categorical_features
 
-        self.n_feature_fields = train_df.columns.size
+        self.n_feature_fields = len(train_df.columns)
         # self.n_features = self.n_categorical_features + len(self.numerical_feature_fields)
         # for i in range(len(self.numerical_feature_fields)):
         #     self.index_offset_np.append(0)  # the offset of numerical feature column is 0
         self.index_offset_np = np.array(self.index_offset_np)
 
-        self.events = train_df.to_numpy()
+        self.events = train_df[self.categorical_feature_fields].to_numpy()
+        self.times = train_df[self.numerical_feature_fields].to_numpy()
         self.n_events = train_df['file'].value_counts(sort=False).values.tolist()
         self.n_procs = len(self.index2value['file'])
         self.prior_dist = train_df.groupby(['file', 'event']).size().unstack(fill_value=0).to_numpy()
-        self.prior_dist = (self.prior_dist == 0).astype(int)
+        self.prior_dist = (self.prior_dist == 0)
         print('done')
 
     def local2raw(self, event_local):
@@ -155,9 +182,13 @@ class Dataset(torch.utils.data.Dataset):
         return event_raw
 
     def global2raw(self, event_global):
-        event_raw = []
-        for i, field in enumerate(self.categorical_feature_fields + self.numerical_feature_fields):
-            event_raw.append(self.index2value[field][int(event_global[i] - self.index_offset[field])])
+        event_raw = [int(event_global[0]),
+                     self.index2value['event'][int(event_global[1] - self.index_offset['event'])],
+                     np.exp(self.index2value['D'][int(event_global[2])])-1,
+                     np.exp(self.index2value['Blank'][int(event_global[3])])-1]
+        # for i, field in enumerate(self.categorical_feature_fields + self.numerical_feature_fields):
+        #     event_raw.append(self.index2value[field][int(event_global[i])])
+        # event_raw.append(self.index2value[field][int(event_global[i] - self.index_offset[field])])
         return event_raw
 
     # convert one-hot format (used in prediction data) to
@@ -224,31 +255,46 @@ class Dataset(torch.utils.data.Dataset):
 
         return event_input, event_raw
 
-    def onehot2global_gpu(self, event_onehot, event_input):
-        for i, feature_field in enumerate(self.categorical_feature_fields):
-            begin = self.index_offset[feature_field]
-            end = self.index_offset[feature_field] + self.feature_field_size[feature_field]
-            if feature_field == 'event':
-                proc_id = event_input[:, :, 0].long()
-                event_onehot[:, :, begin:end] = event_onehot[:, :, begin:end] - self.prior_dist[proc_id] * 100
-            event_input[:, :, i] = torch.argmax(event_onehot[:, :, begin:end], dim=2)
+    def decode_event(self, logits, proc_id):
+        # for i, feature_field in enumerate(self.categorical_feature_fields):
+        #     begin = self.index_offset[feature_field]
+        #     end = self.index_offset[feature_field] + self.feature_field_size[feature_field]
+        #     if feature_field == 'event':
+        #         proc_id = event_input[:, :, 0].long()
+        #         event_onehot[:, :, begin:end] = event_onehot[:, :, begin:end] - self.prior_dist[proc_id] * 100
+        #     event_input[:, :, i] = torch.argmax(event_onehot[:, :, begin:end], dim=2)
 
+        # for i, feature_field in enumerate(self.numerical_feature_fields):
+        #     begin = self.index_offset[feature_field]
+        #     end = self.index_offset[feature_field] + self.feature_field_size[feature_field]
+        #     p = torch.softmax(event_onehot[:, 0, begin:end], dim=1)
+        #     index = i + len(self.categorical_feature_fields)
+        #     event_input[:, :, index] = torch.multinomial(p, num_samples=1, replacement=True)
+
+        # 1. get proc_id for step 2
+        # 2. punish the outputs that were unseen in training
+        # 3. randomly choose final output class
+        # 4. add offset, convert local index to global index
+        output = logits - self.prior_dist[proc_id] * 100
+        p = torch.softmax(output[:, 0, :], dim=1)
+        output = torch.multinomial(p, num_samples=1, replacement=True) + self.index_offset_gpu[1]
+        # output = torch.argmax(output, dim=2) + self.index_offset_gpu[1]
+        return output
+
+    def decode_time(self, logits, output):
         for i, feature_field in enumerate(self.numerical_feature_fields):
-            begin = self.index_offset[feature_field]
-            end = self.index_offset[feature_field] + self.feature_field_size[feature_field]
-            p = torch.softmax(event_onehot[:, 0, begin:end], dim=1)
-            index = i + len(self.categorical_feature_fields)
-            event_input[:, :, index] = torch.multinomial(p, num_samples=1, replacement=True)
-
-        event_input = event_input + self.index_offset_gpu
-        return event_input
+            begin = i * self.feature_field_size[feature_field]
+            end = begin + self.feature_field_size[feature_field]
+            p = torch.softmax(logits[:, 0, begin:end], dim=1)
+            output[:, :, i] = torch.multinomial(p, num_samples=1, replacement=True)
+        return output
 
     def prepare4decode_gpu(self, device):
         self.index_offset_gpu = torch.tensor(self.index_offset_np, dtype=torch.float).to(device)
         if self.initial_state is not None:
             self.initial_state_gpu = (torch.tensor(self.initial_state[0], dtype=torch.float).to(device),
                                       torch.tensor(self.initial_state[1], dtype=torch.float).to(device))
-        self.prior_dist = torch.tensor(self.prior_dist).to(device)
+        self.prior_dist = torch.tensor(self.prior_dist.astype(int)).to(device)
 
     # stupid, just work
     def get_event_str(self, event_raw):
@@ -266,7 +312,7 @@ class Dataset(torch.utils.data.Dataset):
             except ValueError:
                 # trying to convert string to float will throw ValueError
                 line += str(feature) + ','
-            # if str(feature).isnumeric(): # no method to correctly check negative float number
+            # if str(feature).isnumeric(): # cannot correctly check negative float number
             #     if feature<0.0:
             #         line += ','
             #     else:
@@ -347,13 +393,16 @@ class Dataset(torch.utils.data.Dataset):
 
         # x is global index format, y is local index format
         # local = global - offset
-        x = torch.tensor(self.events[index:index + self.sq_length], dtype=torch.float)
-        y = torch.tensor(self.events[index + 1: index + 1 + self.sq_length] -
-                         self.index_offset_np, dtype=torch.float)
-
+        # x_event contains two fields ['file', 'event'], y_event contains one field 'event'
+        x_event = torch.tensor(self.events[index:index + self.sq_length], dtype=torch.float)
+        y_event = torch.tensor(self.events[index + 1: index + 1 + self.sq_length, 1] -
+                               self.index_offset_np[1], dtype=torch.float)
+        x_time = torch.tensor(self.times[index:index + self.sq_length], dtype=torch.float)
+        y_time = torch.tensor(self.times[index + 1:index + 1 + self.sq_length] -
+                              self.index_offset_np[2:4], dtype=torch.float)
         # check if the sequence is from the same trace file
-        file_index = x[:, 0]
+        file_index = x_event[:, 0]
         if np.count_nonzero(file_index - rank) != 0:
-            print('error: inconsistent data batch')
+            print('error: inconsistent data sequence')
 
-        return x, y
+        return x_event, x_time, y_event, y_time

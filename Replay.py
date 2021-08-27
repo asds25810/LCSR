@@ -5,7 +5,7 @@ from Trace_Dataset import Dataset
 import time
 from TraceStat import TraceStat
 
-device = torch.device('cuda:7' if torch.cuda.is_available() else 'cpu')
+device = torch.device('cuda:3' if torch.cuda.is_available() else 'cpu')
 # device = torch.device('cpu')
 torch.cuda.set_device(device)
 
@@ -16,54 +16,69 @@ np.random.seed(0)
 time_infer = 0
 time_decode = 0
 
-data_path = '/data/sunjw/LCSR/LULESH-64/'
+data_path = '/data/sunjw/LCSR/LULESH-125/'
 flag_replay = False
 flag_profile = True
 
 
-def predict(dataset, input_data , model, state_h, state_c):
-    # x = torch.tensor(dataset_np, dtype=torch.float)
+def predict(dataset, input_data, output_time, model_event, model_time, state_event, state_time):
     if flag_profile:
         begin = time.perf_counter_ns()
-    y_pred, (state_h, state_c) = model(input_data, (state_h, state_c))
+    y_pred_event, state_event = model_event(input_data, state_event)
+    y_pred_time, state_time = model_time(input_data, state_time)
     if flag_profile:
         end = time.perf_counter_ns()
         global time_infer
         time_infer += end - begin
 
-    state_h = state_h.detach()
-    state_c = state_c.detach()
-
-    # last_event_logits = y_pred[:, :, :]
     if flag_profile:
         begin = time.perf_counter_ns()
-    input_data = dataset.onehot2global_gpu(y_pred, input_data)
+    # output_event is the next input data
+    output_event = dataset.decode_event(y_pred_event, input_data[:, :, 0].long())
+    output_time = dataset.decode_time(y_pred_time, output_time)
     if flag_profile:
         end = time.perf_counter_ns()
         global time_decode
         time_decode += end - begin
 
-    # dataset_np = event_input
-    return input_data, state_h, state_c
+    return output_event, output_time, state_event, state_time
 
 
 dataset = Dataset()
 dataset.deserialize(data_path + 'dataset.info')
 # input_data = dataset.initial_data.reshape(dataset.n_procs, 1, dataset.n_feature_fields)
-input_data = torch.tensor(dataset.initial_data.reshape(dataset.n_procs, 1, dataset.n_feature_fields),
+input_data = torch.tensor(dataset.initial_data.reshape(dataset.n_procs, 1, 2),
                           dtype=torch.float).to(device)
+output_time = torch.zeros((dataset.n_procs, 1, 2), dtype=torch.float).to(device)
 dataset.prepare4decode_gpu(device)
 
-model = Model(dataset.n_feature_fields, dataset.n_features).to(device)
-state_dict = torch.load(data_path + 'trace.model')
-model.load_state_dict(state_dict)
-model.eval()
+model_event = Model(dataset.n_categorical_features,
+                    2,
+                    dataset.feature_field_size['event'],
+                    24, 8, 2).to(device)
+model_time = Model(dataset.n_categorical_features,
+                   2,
+                   dataset.n_numerical_features,
+                   8, 8, 2).to(device)
+
+# use GPU to replay
+state_dict = torch.load(data_path + 'event.model')
+model_event.load_state_dict(state_dict)
+model_event.to(device)
+state_dict = torch.load(data_path + 'time.model')
+model_time.load_state_dict(state_dict)
+model_time.to(device)
+
+# use CPU to replay
+# model.load_state_dict(torch.load(data_path + 'trace.model', map_location=device))
+
+model_event.eval()
+model_time.eval()
 
 # (state_h, state_c) = dataset.initial_state_gpu
 
-state_h, state_c = model.init_state(dataset.n_procs)
-state_h = state_h.to(device)
-state_c = state_c.to(device)
+state_event = model_event.init_state(dataset.n_procs, device)
+state_time = model_time.init_state(dataset.n_procs, device)
 
 scale_factor = 10
 
@@ -78,18 +93,20 @@ begin = 0
 end = 0
 
 # event_input = torch.zeros((dataset.n_procs, 1, dataset.n_feature_fields)).to(device)
-prediction = np.zeros(shape=(MAX_STEPS, dataset.n_procs, dataset.n_feature_fields))
+prediction = np.zeros(shape=(MAX_STEPS, dataset.n_procs, 4))
 t_begin = time.perf_counter_ns()
 # generate remainder events
 for i in range(0, MAX_STEPS):
     begin = time.perf_counter_ns()
-    # state_h, state_c = model.init_state(1)
-    pred , state_h, state_c = predict(dataset, input_data, model, state_h, state_c)
-    input_data = pred.detach()
+    pred_event, pred_time, state_event, state_time = predict(dataset, input_data, output_time,
+                                                             model_event, model_time,
+                                                             state_event, state_time)
+    input_data[:, :, 1] = pred_event
+
     end = time.perf_counter_ns()
     time_prediction += end - begin
 
-    prediction[i, :, :] = input_data.cpu().numpy().reshape(dataset.n_procs, dataset.n_feature_fields)
+    prediction[i, :, :] = torch.cat([input_data,pred_time], dim=2).cpu().numpy().reshape(dataset.n_procs, 4)
     # print('rank=%d replaying predicted %s' % (rank, dataset.get_event_str(event_raw)))
 
     if i % 2000 == 0:
