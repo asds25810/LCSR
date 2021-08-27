@@ -259,7 +259,7 @@ void work()
 	vector <unsigned int> p ( n );
 	unsigned int i, j, k;
 	bool same;
-	int flag[128];
+	int flag[512];
 	int total;
 	
 	for (i=0;i<n;i++)
