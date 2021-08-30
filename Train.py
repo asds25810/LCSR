@@ -15,8 +15,8 @@ np.random.seed(0)
 device = torch.device('cuda:3' if torch.cuda.is_available() else 'cpu')
 torch.cuda.set_device(device)
 
-# data_path = '/data/sunjw/LCSR/LULESH-125/'
-data_path = '/data/sunjw/LCSR/CG-D-512/'
+# data_path = '/data/sunjw/LCSR/LULESH-512/'
+data_path = '/data/sunjw/LCSR/sweep3d-64/'
 
 
 class DataPrefetcher():
@@ -130,7 +130,6 @@ def train(dataset, model_event, model_time, args):
 # prepare initial states for predicting
 def warmup(dataset, model_event, model_time, n_steps):
     begin_index = np.cumsum(dataset.n_events) - dataset.n_events
-    # n_steps = int(np.min(dataset.n_events) * 0.6)
     n_steps = 8192
 
     model_event.eval()
@@ -155,50 +154,42 @@ def warmup(dataset, model_event, model_time, n_steps):
         dataset.initial_data[proc_id, 0, :] = dataset.events[begin_index[proc_id] + n_steps, :]
 
 
-def validate(dataset, model):
-    model.eval()
+# if __name__ == '__main__':
+parser = argparse.ArgumentParser()
+parser.add_argument('--max-epochs', type=int, default=5)
+parser.add_argument('--batch-size', type=int, default=128)
+parser.add_argument('--sequence-length', type=int, default=256)
+parser.add_argument('--data-dir', type=str, default='')
+args = parser.parse_args()
 
-    state_h, state_c = model.init_state(dataset.n_procs)
-    state_h = state_h.to(device)
-    state_c = state_c.to(device)
+t_begin = time.perf_counter_ns()
+dataset = Dataset()
+dataset.load_events_train(data_path + 'train_dataset.csv', args.sequence_length,
+                          data_path + 'partial_dataset.csv')
 
+model_event = Model(dataset.n_categorical_features,
+                    2,
+                    dataset.feature_field_size['event'],
+                    16, 8, 2).to(device)
+model_time = Model(dataset.n_categorical_features,
+                   2,
+                   dataset.n_numerical_features,
+                   16, 8, 0).to(device)
+# model.half()
+n_param_event = sum(p.numel() for p in model_event.parameters())
+n_param_time = sum(p.numel() for p in model_time.parameters())
+print('%d parameters in event model, %d parameters in time model' % (n_param_event, n_param_time))
+print('%d samples in total' % len(dataset))
 
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--max-epochs', type=int, default=5)
-    parser.add_argument('--batch-size', type=int, default=128)
-    parser.add_argument('--sequence-length', type=int, default=256)
-    parser.add_argument('--data-dir', type=str, default='')
-    args = parser.parse_args()
+t_end = time.perf_counter_ns()
+print('Total time cost for preprocess: %fs' % ((t_end - t_begin) / 1000000000.0))
 
-    t_begin = time.perf_counter_ns()
-    dataset = Dataset()
-    dataset.load_events_train(data_path + 'train_dataset.csv', args.sequence_length,
-                              data_path + 'partial_dataset.csv')
+t_begin = time.perf_counter_ns()
+train(dataset, model_event, model_time, args)
+t_end = time.perf_counter_ns()
+print('Total time cost for training: %fs' % ((t_end - t_begin) / 1000000000.0))
 
-    model_event = Model(dataset.n_categorical_features,
-                        2,
-                        dataset.feature_field_size['event'],
-                        24, 8, 2).to(device)
-    model_time = Model(dataset.n_categorical_features,
-                       2,
-                       dataset.n_numerical_features,
-                       8, 8, 2).to(device)
-    # model.half()
-    n_param_event = sum(p.numel() for p in model_event.parameters())
-    n_param_time = sum(p.numel() for p in model_time.parameters())
-    print('%d parameters in event model, %d parameters in time model' % (n_param_event, n_param_time))
-    print('%d samples in total' % len(dataset))
-
-    t_end = time.perf_counter_ns()
-    print('Total time cost for preprocess: %fs' % ((t_end - t_begin) / 1000000000.0))
-
-    t_begin = time.perf_counter_ns()
-    train(dataset, model_event, model_time, args)
-    t_end = time.perf_counter_ns()
-    print('Total time cost for training: %fs' % ((t_end - t_begin) / 1000000000.0))
-
-    warmup(dataset, model_event, model_time, 121920)
-    torch.save(model_event.state_dict(), data_path + 'event.model')
-    torch.save(model_time.state_dict(), data_path + 'time.model')
-    dataset.serialize(data_path + 'dataset.info')
+warmup(dataset, model_event, model_time, 121920)
+torch.save(model_event.state_dict(), data_path + 'event.model')
+torch.save(model_time.state_dict(), data_path + 'time.model')
+dataset.serialize(data_path + 'dataset.info')

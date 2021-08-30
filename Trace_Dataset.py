@@ -71,40 +71,13 @@ class Dataset(torch.utils.data.Dataset):
 
         train_df.fillna(-1, inplace=True)
 
-        # while True:
-        #     ids = np.random.randint(0, len(train_df))
-        #     d = train_df['D'].to_numpy()[ids:ids+256]
-        #     b = train_df['Blank'].to_numpy()[ids:ids+256]
-        #     plt.hist(np.log(d), 32, density=False, facecolor='g', alpha=0.75, log=True)
-        #     plt.title('D')
-        #     plt.show()
-        #     plt.hist(np.log(b), 32, density=False, facecolor='g', alpha=0.75, log=True)
-        #     plt.title('B')
-        #     plt.show()
-        #     plt.hist(np.log(d+b), 32, density=False, facecolor='g', alpha=0.75, log=True)
-        #     plt.title('SUM')
-        #     plt.show()
-
-        # d_dist = train_df.groupby(['file'])['D']
-        # b_dist = train_df.groupby(['file'])['Blank']
-
-        # for (event_id, data) in d_dist:
-        #     plt.hist(data.values, 50, density=False, facecolor='g', alpha=0.75, log=True)
-        #     plt.title('event %s' % event_id)
-        #     plt.show()
-
-        # for (event_id, data) in b_dist:
-        #     plt.hist(data.values, 50, density=False, facecolor='g', alpha=0.75, log=True)
-        #     plt.title('event %s' % event_id)
-        #     plt.show()
-
         print('discretize numerical features')
         # the last two columns 'D' and 'Blank' are numeric features
         # self.categorical_feature_fields = ['file', 'function', 'count', 'datatype', 'target', 'tag']
         self.categorical_feature_fields = ['file', 'event']
         self.numerical_feature_fields = ['D', 'Blank']
         for field in self.numerical_feature_fields:
-            km = MiniBatchKMeans(n_clusters=16, n_init=1)
+            km = MiniBatchKMeans(n_clusters=32, n_init=1)
             train_df[field] = km.fit_predict(np.log(1 + train_df[field].to_numpy(dtype=np.float).reshape(-1, 1)))
             self.index2value[field] = km.cluster_centers_
 
@@ -115,19 +88,6 @@ class Dataset(torch.utils.data.Dataset):
             # self.index2value[field] = []
             # for i in range(len(kbins.bin_edges_)-1):
             #     self.index2value[field].apped((kbins.bin_edges_[i] + kbins.bin_edges_[i+1])/2)
-
-            # todo visualization
-            # x = train_df[field].to_numpy()
-            # plt.hist(x, 10, density=True, facecolor='g', alpha=0.75, log=True)
-            # plt.ylabel(field)
-            # plt.show()
-
-        # test for zipping features
-        # print('test for zipping features')
-        # data_fileds = self.categorical_feature_fields[1:]  # exclude process id
-        # indices, values = pd.factorize(list(train_df[data_fileds].itertuples(index=False, name=None)),
-        #                                na_sentinel=None, sort=True)
-        # print('%d unique events' % values.size)
 
         print('prepare embeddings')
         # preprocess for embeddings of multiple categorical features, convert input data to global index format
@@ -184,93 +144,14 @@ class Dataset(torch.utils.data.Dataset):
     def global2raw(self, event_global):
         event_raw = [int(event_global[0]),
                      self.index2value['event'][int(event_global[1] - self.index_offset['event'])],
-                     np.exp(self.index2value['D'][int(event_global[2])])-1,
-                     np.exp(self.index2value['Blank'][int(event_global[3])])-1]
+                     np.exp(self.index2value['D'][int(event_global[2])]) - 1,
+                     np.exp(self.index2value['Blank'][int(event_global[3])]) - 1]
         # for i, field in enumerate(self.categorical_feature_fields + self.numerical_feature_fields):
         #     event_raw.append(self.index2value[field][int(event_global[i])])
         # event_raw.append(self.index2value[field][int(event_global[i] - self.index_offset[field])])
         return event_raw
 
-    # convert one-hot format (used in prediction data) to
-    # local index format (used in label data)
-    def onehot2local(self, event_onehot, field, softmax=False):
-        feature_field = event_onehot[
-                        self.index_offset[field]:self.index_offset[field] + self.feature_field_size[field]]
-        if softmax:
-            # if column != 'function' and column != 'file':
-            #     feature_field = feature_field[1:]  # ignore N/A
-            p = scipy.special.softmax(feature_field)
-            local_index = np.random.choice(len(feature_field), p=p)
-        else:
-            local_index = np.argmax(feature_field)
-        return local_index
-
-    # convert one-hot format (used in prediction data) to
-    # global index format (used in input data) and
-    # raw format of trace
-    def onehot2global(self, event_onehot, softmax=False, shield=False):
-        event_input = []
-        event_raw = []
-
-        for i, field in enumerate(self.categorical_feature_fields):
-            local_index = self.onehot2local(event_onehot, field, False)
-            event_input.append(local_index + self.index_offset[field])
-            event_raw.append(self.index2value[field][local_index])
-
-        for i, field in enumerate(self.numerical_feature_fields):
-            local_index = self.onehot2local(event_onehot, field, True)
-            event_input.append(local_index + self.index_offset[field])
-            event_raw.append(self.index2value[field][local_index])
-
-        local_index_dict = {}
-
-        # # first, decode mpi function name
-        # local_index = self.onehot2local(event_onehot, 'function', softmax)
-        # mpi_func = self.index2value['function'][local_index]
-        # local_index_dict['function'] = local_index
-        #
-        # if mpi_func not in function_para_dict.keys():
-        #     print('error: unexpected mpi function')
-        # for field in self.categorical_feature_fields:
-        #     if field in function_para_dict[mpi_func] and field != 'function':
-        #         local_index = self.onehot2local(event_onehot, field, softmax)
-        #         local_index_dict[field] = local_index
-        #     # event_raw.append(self.index2value[column][local_index])
-        #
-        # for i, field in enumerate(self.categorical_feature_fields):
-        #     global_index = local_index_dict[field] + self.index_offset[field]
-        #     event_raw.append(self.index2value[field][local_index_dict[field]])
-        #     event_input.append(global_index)
-        #
-        # # numerical features
-        # # note that each numerical feature field only contain one feature,
-        # # so n_numerical_features == n_numerical_feature_fields
-        # for i, column in enumerate(self.numerical_feature_fields):
-        #     feature_normalized = np.clip(event_onehot[i - self.n_numerical_features], a_min=0.0, a_max=1.0)
-        #     # feature_normalized = event_onehot[i - self.n_numerical_features]
-        #     feature_raw = self.inverse_scale([[feature_normalized]])[0][0]
-        #     event_input.append(feature_normalized)
-        #     # event_raw.append(feature_raw)
-        #     event_raw.append(feature_raw)
-
-        return event_input, event_raw
-
     def decode_event(self, logits, proc_id):
-        # for i, feature_field in enumerate(self.categorical_feature_fields):
-        #     begin = self.index_offset[feature_field]
-        #     end = self.index_offset[feature_field] + self.feature_field_size[feature_field]
-        #     if feature_field == 'event':
-        #         proc_id = event_input[:, :, 0].long()
-        #         event_onehot[:, :, begin:end] = event_onehot[:, :, begin:end] - self.prior_dist[proc_id] * 100
-        #     event_input[:, :, i] = torch.argmax(event_onehot[:, :, begin:end], dim=2)
-
-        # for i, feature_field in enumerate(self.numerical_feature_fields):
-        #     begin = self.index_offset[feature_field]
-        #     end = self.index_offset[feature_field] + self.feature_field_size[feature_field]
-        #     p = torch.softmax(event_onehot[:, 0, begin:end], dim=1)
-        #     index = i + len(self.categorical_feature_fields)
-        #     event_input[:, :, index] = torch.multinomial(p, num_samples=1, replacement=True)
-
         # 1. get proc_id for step 2
         # 2. punish the outputs that were unseen in training
         # 3. randomly choose final output class
@@ -326,6 +207,46 @@ class Dataset(torch.utils.data.Dataset):
         x = self.events[:, -2]
         plt.hist(x, 100, density=False, facecolor='g', alpha=0.75, log=True)
         plt.show()
+
+        # while True:
+        #     ids = np.random.randint(0, len(train_df))
+        #     d = train_df['D'].to_numpy()[ids:ids+256]
+        #     b = train_df['Blank'].to_numpy()[ids:ids+256]
+        #     plt.hist(np.log(d), 32, density=False, facecolor='g', alpha=0.75, log=True)
+        #     plt.title('D')
+        #     plt.show()
+        #     plt.hist(np.log(b), 32, density=False, facecolor='g', alpha=0.75, log=True)
+        #     plt.title('B')
+        #     plt.show()
+        #     plt.hist(np.log(d+b), 32, density=False, facecolor='g', alpha=0.75, log=True)
+        #     plt.title('SUM')
+        #     plt.show()
+
+        # d_dist = train_df.groupby(['file'])['D']
+        # b_dist = train_df.groupby(['file'])['Blank']
+
+        # for (event_id, data) in d_dist:
+        #     plt.hist(data.values, 50, density=False, facecolor='g', alpha=0.75, log=True)
+        #     plt.title('event %s' % event_id)
+        #     plt.show()
+
+        # for (event_id, data) in b_dist:
+        #     plt.hist(data.values, 50, density=False, facecolor='g', alpha=0.75, log=True)
+        #     plt.title('event %s' % event_id)
+        #     plt.show()
+
+        # todo visualization
+        # x = train_df[field].to_numpy()
+        # plt.hist(x, 10, density=True, facecolor='g', alpha=0.75, log=True)
+        # plt.ylabel(field)
+        # plt.show()
+
+        # test for zipping features
+        # print('test for zipping features')
+        # data_fileds = self.categorical_feature_fields[1:]  # exclude process id
+        # indices, values = pd.factorize(list(train_df[data_fileds].itertuples(index=False, name=None)),
+        #                                na_sentinel=None, sort=True)
+        # print('%d unique events' % values.size)
 
     def serialize(self, dataset_info_path):
         dataset_info = {
@@ -397,6 +318,10 @@ class Dataset(torch.utils.data.Dataset):
         x_event = torch.tensor(self.events[index:index + self.sq_length], dtype=torch.float)
         y_event = torch.tensor(self.events[index + 1: index + 1 + self.sq_length, 1] -
                                self.index_offset_np[1], dtype=torch.float)
+        # x_time = torch.tensor(
+        #     np.concatenate((self.events[index:index + self.sq_length],
+        #                     self.times[index:index + self.sq_length]),
+        #                    axis=1), dtype=torch.float)
         x_time = torch.tensor(self.times[index:index + self.sq_length], dtype=torch.float)
         y_time = torch.tensor(self.times[index + 1:index + 1 + self.sq_length] -
                               self.index_offset_np[2:4], dtype=torch.float)

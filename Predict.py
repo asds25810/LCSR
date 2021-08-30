@@ -1,6 +1,6 @@
 from TraceStat import *
 
-data_path = '/data/sunjw/LCSR/LULESH-125/'
+data_path = '/data/sunjw/LCSR/CG-D-64/'
 trace_stat1 = TraceStat(16)
 trace_stat1.load(data_path + 'train_data.stat')
 trace_stat1.visualize()

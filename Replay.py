@@ -16,7 +16,7 @@ np.random.seed(0)
 time_infer = 0
 time_decode = 0
 
-data_path = '/data/sunjw/LCSR/LULESH-125/'
+data_path = '/data/sunjw/LCSR/CG-D-64/'
 flag_replay = False
 flag_profile = True
 
@@ -59,7 +59,7 @@ model_event = Model(dataset.n_categorical_features,
 model_time = Model(dataset.n_categorical_features,
                    2,
                    dataset.n_numerical_features,
-                   8, 8, 2).to(device)
+                   16, 8, 0).to(device)
 
 # use GPU to replay
 state_dict = torch.load(data_path + 'event.model')
@@ -82,7 +82,7 @@ state_time = model_time.init_state(dataset.n_procs, device)
 
 scale_factor = 10
 
-MAX_STEPS = int(np.max(dataset.n_events)/scale_factor)
+MAX_STEPS = int(np.max(dataset.n_events) / scale_factor)
 
 print('%d batches in total' % np.max(dataset.n_events))
 print('predict %d batches to approximate' % MAX_STEPS)
@@ -106,7 +106,7 @@ for i in range(0, MAX_STEPS):
     end = time.perf_counter_ns()
     time_prediction += end - begin
 
-    prediction[i, :, :] = torch.cat([input_data,pred_time], dim=2).cpu().numpy().reshape(dataset.n_procs, 4)
+    prediction[i, :, :] = torch.cat([input_data, pred_time], dim=2).cpu().numpy().reshape(dataset.n_procs, 4)
     # print('rank=%d replaying predicted %s' % (rank, dataset.get_event_str(event_raw)))
 
     if i % 2000 == 0:
@@ -118,7 +118,7 @@ for i in range(0, MAX_STEPS):
 t_end = time.perf_counter_ns()
 t1 = t_end - t_begin
 print(
-    'Total time cost for %d batches of events: %fs' % (MAX_STEPS , (t_end - t_begin) / 1000000000.0))
+    'Total time cost for %d batches of events: %fs' % (MAX_STEPS, (t_end - t_begin) / 1000000000.0))
 print('Average time for predicting a batch of events: %.1fus' % (time_prediction / MAX_STEPS / 1000.0))
 
 # get predicted trace statistics
@@ -126,8 +126,6 @@ t_begin = time.perf_counter_ns()
 
 trace_stats = TraceStat(dataset.n_procs, scale_factor, dataset.n_events)
 file = open(data_path + 'prediction.csv', 'w')
-
-
 
 # need acceleration
 for i in range(dataset.n_procs):
@@ -154,8 +152,8 @@ for i in range(dataset.n_procs):
                 time_write += end - begin
         else:
             break
-    print('average time for decoding an event %fus' %(time_global2raw/dataset.n_events[i]/1000.0))
-    print('average time for writing an event %fus' % (time_write /dataset.n_events[i]/1000.0))
+    print('average time for decoding an event %fus' % (time_global2raw / dataset.n_events[i] / 1000.0))
+    print('average time for writing an event %fus' % (time_write / dataset.n_events[i] / 1000.0))
 file.close()
 trace_stats.save(data_path + 'prediction.stat')
 

@@ -22,7 +22,7 @@ def get_offset(source, dest, nprocs):
 
 
 nprocs = 64
-data_path = '/data/sunjw/LCSR/sweep3d-64/'
+data_path = '/data/sunjw/LCSR/BT-D-256/'
 
 if len(sys.argv) > 1:
     nprocs = int(sys.argv[1])
@@ -100,15 +100,13 @@ for i in range(nprocs):
 
             tag = re.findall(r'tag= (.*?),', line)
             if tag:
-                para_list[5] = tag[0]
+                para_list[5] = '0'  #tag[0]
 
             S = re.findall(r'S=\[ (.*?) \]', line)
             E = re.findall(r'E=\[ (.*?) \]', line)
             D = re.findall(r'D=\[ (.*?) \]', line)
             if D:
                 para_list[6] = D[0]
-                # para_list[6] = str(int(E[0]) - int(S[0]))
-
 
             if E:
                 Blank = int(S[0]) - last_end

@@ -60,10 +60,12 @@ class TraceStat:
             comp.append(self.stats[i].comp_time/1000000.0 * self.scale_factor)
             comm.append(self.stats[i].comm_time/1000000.0 * self.scale_factor)
             sum.append((self.stats[i].comp_time/1000000.0+self.stats[i].comm_time/1000000.0) * self.scale_factor)
-        print('median computation:%fs communication:%fs total:%fs' % (
+        print('computation, comm, sum:%.2f\t%.2f\t%.2f' % (
             np.median(comp).item(), np.median(comm).item(), np.median(sum).item()))
-        print('mean computation:%fs communication:%fs total:%fs'%(
+        print('mean computation, comm, sum:%.2f\t%.2f\t%.2f'%(
             np.mean(comp).item(), np.mean(comm).item(),np.mean(sum).item()))
+        print('max computation, comm, sum:%.2f\t%.2f\t%.2f' % (
+            np.max(comp).item(), np.max(comm).item(), np.max(sum).item()))
 
 
     def visualize(self):
