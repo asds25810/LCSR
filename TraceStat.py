@@ -60,11 +60,11 @@ class TraceStat:
             comp.append(self.stats[i].comp_time/1000000.0 * self.scale_factor)
             comm.append(self.stats[i].comm_time/1000000.0 * self.scale_factor)
             sum.append((self.stats[i].comp_time/1000000.0+self.stats[i].comm_time/1000000.0) * self.scale_factor)
-        print('computation, comm, sum:%.2f\t%.2f\t%.2f' % (
+        print('computation, comm, sum: %.2f\t%.2f\t%.2f' % (
             np.median(comp).item(), np.median(comm).item(), np.median(sum).item()))
-        print('mean computation, comm, sum:%.2f\t%.2f\t%.2f'%(
+        print('mean computation, comm, sum: %.2f\t%.2f\t%.2f'%(
             np.mean(comp).item(), np.mean(comm).item(),np.mean(sum).item()))
-        print('max computation, comm, sum:%.2f\t%.2f\t%.2f' % (
+        print('max computation, comm, sum: %.2f\t%.2f\t%.2f' % (
             np.max(comp).item(), np.max(comm).item(), np.max(sum).item()))
 
 

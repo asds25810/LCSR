@@ -16,16 +16,15 @@ np.random.seed(0)
 time_infer = 0
 time_decode = 0
 
-data_path = '/data/sunjw/LCSR/CG-D-64/'
+data_path = '/data/sunjw/LCSR/SP-D-529/'
 flag_replay = False
 flag_profile = True
 
 
-def predict(dataset, input_data, output_time, model_event, model_time, state_event, state_time):
+def predict(dataset, input_data, output_time, model, state):
     if flag_profile:
         begin = time.perf_counter_ns()
-    y_pred_event, state_event = model_event(input_data, state_event)
-    y_pred_time, state_time = model_time(input_data, state_time)
+    y_pred_event, y_pred_time, state = model(input_data, state)
     if flag_profile:
         end = time.perf_counter_ns()
         global time_infer
@@ -41,7 +40,7 @@ def predict(dataset, input_data, output_time, model_event, model_time, state_eve
         global time_decode
         time_decode += end - begin
 
-    return output_event, output_time, state_event, state_time
+    return output_event, output_time, state
 
 
 dataset = Dataset()
@@ -52,33 +51,24 @@ input_data = torch.tensor(dataset.initial_data.reshape(dataset.n_procs, 1, 2),
 output_time = torch.zeros((dataset.n_procs, 1, 2), dtype=torch.float).to(device)
 dataset.prepare4decode_gpu(device)
 
-model_event = Model(dataset.n_categorical_features,
+model = Model(dataset.n_categorical_features,
                     2,
-                    dataset.feature_field_size['event'],
+                    dataset.feature_field_size['event'], dataset.n_numerical_features,
                     24, 8, 2).to(device)
-model_time = Model(dataset.n_categorical_features,
-                   2,
-                   dataset.n_numerical_features,
-                   16, 8, 0).to(device)
 
 # use GPU to replay
-state_dict = torch.load(data_path + 'event.model')
-model_event.load_state_dict(state_dict)
-model_event.to(device)
-state_dict = torch.load(data_path + 'time.model')
-model_time.load_state_dict(state_dict)
-model_time.to(device)
+state_dict = torch.load(data_path + 'trace.model')
+model.load_state_dict(state_dict)
+model.to(device)
 
 # use CPU to replay
 # model.load_state_dict(torch.load(data_path + 'trace.model', map_location=device))
 
-model_event.eval()
-model_time.eval()
+model.eval()
 
 # (state_h, state_c) = dataset.initial_state_gpu
 
-state_event = model_event.init_state(dataset.n_procs, device)
-state_time = model_time.init_state(dataset.n_procs, device)
+state = model.init_state(dataset.n_procs, device)
 
 scale_factor = 10
 
@@ -98,9 +88,7 @@ t_begin = time.perf_counter_ns()
 # generate remainder events
 for i in range(0, MAX_STEPS):
     begin = time.perf_counter_ns()
-    pred_event, pred_time, state_event, state_time = predict(dataset, input_data, output_time,
-                                                             model_event, model_time,
-                                                             state_event, state_time)
+    pred_event, pred_time, state = predict(dataset, input_data, output_time, model, state)
     input_data[:, :, 1] = pred_event
 
     end = time.perf_counter_ns()
