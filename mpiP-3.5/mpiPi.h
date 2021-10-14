@@ -25,7 +25,6 @@
 #include <sys/time.h>
 #include <time.h>
 #include <unistd.h>
-
 #include "mpiPconfig.h"
 
 #ifdef ENABLE_BFD
@@ -130,6 +129,16 @@ typedef struct
   DT_table_item items[128];
 } DT_table_t;
 
+#ifndef LIST
+#define LIST
+typedef struct
+{
+  int size;
+  int capacity;
+  char *data;
+} list_t;
+#endif
+
 typedef struct _mpiPi_t
 {
   int ac;
@@ -154,7 +163,11 @@ typedef struct _mpiPi_t
   FILE *stderr_;
   FILE *recfile;
 
+  // list for storing compact event strings
+  list_t event_list;
+
   // A simple table for looking up the corresponding MPI_Datatype of a 64-bit number
+  // it seems useless
   DT_table_t DT_table;
 
   mpiPi_TIME time_begin;

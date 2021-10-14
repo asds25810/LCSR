@@ -1072,9 +1072,9 @@ def CreateWrapper(funct, olist):
     olist.append("\n{\n")
 
     # olist.append(" char datatype_name[32]={0};\n")
-    olist.append(" int DT_size=0;\n double start_from_begin, end_from_begin;\n")
+    olist.append(" int DT_size=0;\n double start_from_begin, end_from_begin, overhead; char event_buffer[128];\n")
 
-    olist.append( " int rc, enabledState;\n double dur;\n int tsize;\n double messSize = 0.;\n double ioSize = 0.;\n double rmaSize =0.;\n mpiPi_TIME start, end;\n void *call_stack[MPIP_CALLSITE_STACK_DEPTH_MAX] = { NULL };\n" )
+    olist.append( " int rc, enabledState;\n double dur;\n int tsize;\n double messSize = 0.;\n double ioSize = 0.;\n double rmaSize =0.;\n mpiPi_TIME start, end, end2;\n void *call_stack[MPIP_CALLSITE_STACK_DEPTH_MAX] = { NULL };\n" )
     olist.append( " mpiPi_mt_stat_tls_t *hndl;\n" )
 
     olist.append("\n hndl = mpiPi_stats_mt_gettls(&mpiPi.task_stats);\n")
@@ -1089,56 +1089,7 @@ def CreateWrapper(funct, olist):
     # capture call stack
     olist.append("if ( mpiPi.reportStackDepth > 0 ) mpiPi_RecordTraceBack((*base_jbuf), call_stack, mpiPi.fullStackDepth);\n"  )
 
-	######### ADD by Yuanjing
-    # show func --Yuanjing
-    olist.append("fprintf(mpiPi.recfile, \"Trace: Rank=%d Function: " + funct + "\\n\", mpiPi.rank);\n" )
-
-    # show paras --Yuanjing
-    paras = "( "
-    for i in fdict[funct].paramConciseList:
-        paras += fdict[funct].paramDict[i].basetype;
-        if (fdict[funct].paramDict[i].pointerLevel == 0) \
-            and (fdict[funct].paramDict[i].arrayLevel == 0) \
-            and (fdict[funct].paramDict[i].basetype != "void"):
-            paras += "*"
-        paras += " " + i
-        if fdict[funct].paramConciseList.index(i) < len(fdict[funct].paramConciseList) - 1:
-            paras += ", "		
-    paras += " )"
-    olist.append("fprintf(mpiPi.recfile, \"Trace: Parameters: = " + paras + "\\n\");\n" )
-
-    # show parasvalues --Yuanjing
-    values = ""
-    paras = ""
-    for i in fdict[funct].paramConciseList:
-        paras += fdict[funct].paramDict[i].basetype;
-        if (fdict[funct].paramDict[i].pointerLevel == 0) \
-            and (fdict[funct].paramDict[i].arrayLevel == 0) \
-            and (fdict[funct].paramDict[i].basetype != "void") \
-            and (fdict[funct].paramDict[i].basetype != "MPI_Datatype"):
-            values += "*"
-        # print(fdict[funct].paramDict[i].basetype)
-        if (fdict[funct].paramDict[i].basetype == "MPI_Datatype"):
-            # use datatype_name to represent MPI_Datatype
-            #paras += " " + i + "= %s, "
-            #olist.append("DT_table_get(&mpiPi.DT_table,*" + i + ",datatype_name);\n")
-            #values += "datatype_name"
-
-            # only reserver size of datatype
-            paras += " " + i + "= %d, "
-            olist.append("MPI_Type_size(*" + i + ", &DT_size);\n")
-            values += "DT_size"
-        else:
-            paras += " " + i + "= %d, "
-            values += i
-        if fdict[funct].paramConciseList.index(i) < len(fdict[funct].paramConciseList) - 1:
-            values += ", "	
-
-    olist.append("fprintf(mpiPi.recfile, \"Trace: Paravalues: = (" + paras + ")\\n\", " + values + ");\n" )
-    #olist.append("printf(\""+funct+" checkpoint 1\\n\");\n")
-
-    olist.append("start_from_begin = mpiPi_GETTIMEDIFF (&start, &mpiPi.time_begin);\n" )
-    olist.append("fprintf(mpiPi.recfile, \"Trace: Starttime = [ %.0lf ]\\n\",start_from_begin);\n" )
+	
     
     # show start time --Yuanjing
     #olist.append("fprintf(mpiPi.recfile, \"Trace: Starttime = [ %.0lf ]\\n\",mpiPi_SHOWTIME_DOUBLETYPE(&start));\n" )
@@ -1176,16 +1127,38 @@ def CreateWrapper(funct, olist):
                  + "mpiPi_GETTIME (&end);\n"
                  + "dur = mpiPi_GETTIMEDIFF (&end, &start);\n")
 
+    # time
+    olist.append("start_from_begin = mpiPi_GETTIMEDIFF (&start, &mpiPi.time_begin);\n" )
     olist.append("end_from_begin = mpiPi_GETTIMEDIFF (&end, &mpiPi.time_begin);\n" )
-    olist.append("fprintf(mpiPi.recfile, \"Trace: Endtime = [ %.0lf ]\\n\",end_from_begin);\n" )
 
-	######### ADD by Yuanjing
-    # show end time --Yuanjing
-    #olist.append("fprintf(mpiPi.recfile, \"Trace: Endtime = [ %.0lf ]\\n\",mpiPi_SHOWTIME_DOUBLETYPE(&end));\n" )
-    #olist.append("printf(\""+funct+" checkpoint 3\\n\");\n")
-    # show dur time --Yuanjing
-    olist.append("fprintf(mpiPi.recfile, \"Trace: Durtime = [ %.0lf ]\\n\",dur);\n" )
-    #olist.append("printf(\""+funct+" checkpoint 4\\n\");\n")
+    # params
+    prefix = ''
+    datacount = '0'
+    datatype = '0'
+    target = '0'
+    for i in fdict[funct].paramConciseList:
+        if (fdict[funct].paramDict[i].pointerLevel == 0) \
+            and (fdict[funct].paramDict[i].arrayLevel == 0) \
+            and (fdict[funct].paramDict[i].basetype != "void") \
+            and (fdict[funct].paramDict[i].basetype != "MPI_Datatype"):
+            prefix = '*'
+        else:
+            prefix = ''
+        if (fdict[funct].paramDict[i].basetype == "MPI_Datatype"):
+            olist.append("MPI_Type_size(*" + i + ", &DT_size);\n")
+        if i in ['count', 'sendcount', 'sendcnt', 'recvcount', 'recvcnt', 'incount']:
+            datacount = prefix + i
+        elif i in ['datatype', 'sendtype', 'recvtype']:
+            datatype = prefix + "DT_size"
+        elif i == 'dest' or i == 'root':
+            target = prefix + i
+    
+    # rank and function 
+    olist.append("sprintf(event_buffer, \"%d,"+ funct + ",%d;%d;%d,%.0lf,%.0lf\\n\",mpiPi.rank,"+ datacount + "," + datatype + ","+ target +",start_from_begin,end_from_begin);\n")
+    olist.append("list_push(&mpiPi.event_list, event_buffer);\n")
+    # olist.append("printf(\"%s\",event_buffer);\n")  # debug
+
+
 
     #  Calculate message size based on count and datatype arguments
     if fdict[funct].sendCountPname != "":
@@ -1618,6 +1591,7 @@ def GenerateWrappers():
       olist.append("#include \"weak-symbols.h\"\n")
 
     olist.append("#include \"mpiPi_def.h\"\n")
+    olist.append("#include \"list.h\"\n")
     olist.append("\n")
 
     for funct in flist:

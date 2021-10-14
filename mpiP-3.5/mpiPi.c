@@ -185,6 +185,8 @@ mpiPi_init (char *appName, mpiPi_thr_mode_t thr_mode)
   mpiPi.global_task_app_time = NULL;
   mpiPi.global_task_mpi_time = NULL;
 
+  list_init(&mpiPi.event_list);
+
   int i=0;
   DT_table_init(&mpiPi.DT_table);
   mpiPi_GETTIME (&mpiPi.time_begin);
@@ -918,8 +920,8 @@ mpiPi_generateReport (int report_style)
 void
 mpiPi_finalize ()
 {
-  if (mpiPi.disable_finalize_report == 0)
-    mpiPi_generateReport (mpiPi.report_style);
+  // if (mpiPi.disable_finalize_report == 0)
+    // mpiPi_generateReport (mpiPi.report_style);
 
   mpiPi_stats_mt_fini(&mpiPi.task_stats);
 
@@ -931,6 +933,13 @@ mpiPi_finalize ()
 
   if (mpiPi.global_task_hostnames != NULL)
     free (mpiPi.global_task_hostnames);
+
+  // printf("mpiP: rank %d writing trace, %d bytes\n",mpiPi.rank, mpiPi.event_list.size);
+  fwrite(mpiPi.event_list.data, sizeof(char), mpiPi.event_list.size,mpiPi.recfile);
+  fclose(mpiPi.recfile);
+  // list_free(&mpiPi.event_list);
+
+
 
   /*  Could do a lot of housekeeping before calling PMPI_Finalize()
    *  but is it worth the additional work?
